@@ -5,8 +5,8 @@
   "bin": "dist",
   "scripts": {
     "lint": "prettier --config \".prettierrc\" --write \"src/**/*\"",
-    "prepare": "tsc",
-    "test": "ava --tap | tap-nyan"
+    "prepare": "rm -r dist && tsc",
+    "test": "ava --verbose"
   },
   "keywords": [
     "web",
