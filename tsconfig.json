@@ -2,9 +2,10 @@
   "compilerOptions": {
     "rootDir": "src/main",
     "outDir": "dist",
-    "target": "es2015",
+    "target": "es2017",
     "module": "commonjs",
     "strict": true,
-    "allowJs": true
+    "declaration": true,
+    "experimentalDecorators": true
   }
 }
