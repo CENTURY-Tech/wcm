@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "prettier --config \".prettierrc\" --write \"src/**/*\"",
     "prepare": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "ava --tap | tap-nyan"
   },
   "keywords": [
     "web",
@@ -21,6 +21,8 @@
   },
   "devDependencies": {
     "prettier": "^1.13.4",
+    "ava": "1.0.0-beta.5.1",
+    "tap-nyan": "^1.1.0",
     "typescript": "^2.9.1"
   }
 }
