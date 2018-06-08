@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "rootDir": "src/main",
+    "outDir": "dist",
+    "target": "es2015",
+    "module": "commonjs",
+    "strict": true,
+    "allowJs": true
+  }
+}

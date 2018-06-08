@@ -1,0 +1,23 @@
+{
+  "name": "wcm",
+  "version": "1.0.0",
+  "description": "Web Components Manager, a tool to version web components",
+  "bin": "dist",
+  "scripts": {
+    "prepare": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "web",
+    "components"
+  ],
+  "author": "Century TECH",
+  "license": "MIT",
+  "dependencies": {
+    "monet": "^0.8.10",
+    "vorpal": "^1.12.0"
+  },
+  "devDependencies": {
+    "typescript": "^2.9.1"
+  }
+}
