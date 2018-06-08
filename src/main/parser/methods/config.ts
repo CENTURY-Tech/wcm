@@ -31,10 +31,7 @@ export function configGet(key: keyof ParserConfig): ParserReader<void> {
  * @param key
  * @param value
  */
-export function configSet(
-  key: keyof ParserConfig,
-  value: string
-): ParserReader<void> {
+export function configSet(key: keyof ParserConfig, value: string): ParserReader<void> {
   return ParserReader(({ config }) => {
     config[key] = value;
   });

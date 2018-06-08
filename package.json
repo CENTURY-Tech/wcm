@@ -4,7 +4,7 @@
   "description": "Web Components Manager, a tool to version web components",
   "bin": "dist",
   "scripts": {
-    "lint": "prettier --write \"src/**/*\"",
+    "lint": "prettier --config \".prettierrc\" --write \"src/**/*\"",
     "prepare": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,6 +15,7 @@
   "author": "Century TECH",
   "license": "MIT",
   "dependencies": {
+    "@types/node": "^10.3.2",
     "monet": "^0.8.10",
     "vorpal": "^1.12.0"
   },
