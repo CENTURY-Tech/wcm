@@ -4,6 +4,7 @@
   "description": "Web Components Manager, a tool to version web components",
   "bin": "dist",
   "scripts": {
+    "lint": "prettier --write \"src/**/*\"",
     "prepare": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -18,6 +19,7 @@
     "vorpal": "^1.12.0"
   },
   "devDependencies": {
+    "prettier": "^1.13.4",
     "typescript": "^2.9.1"
   }
 }

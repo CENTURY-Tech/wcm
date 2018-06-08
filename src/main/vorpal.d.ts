@@ -1,3 +1,3 @@
 export interface VorpalCommand {
-  log(message?: any, ...optionalParams: any[]): void
+  log(message?: any, ...optionalParams: any[]): void;
 }
