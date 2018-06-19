@@ -12,7 +12,16 @@ export const GlobalConfig = {
     manifestUrl: "manifest.json",
     interceptSrc: "bower_components",
     interceptDest: "web_components",
-    minifyWorkerFiles: false
+    babelTransformOptions: {
+      presets: [
+        [
+          "env",
+          {
+            targets: { browsers: [">0.25%"] }
+          }
+        ]
+      ]
+    }
   }),
   migration: ConfigFactory<MigrationConfig>({
     depsRootDir: "node_modules",

@@ -1,25 +1,14 @@
 import { VorpalCommand } from "../vorpal";
 import { GlobalConfig } from "./config";
 import { writeFile } from "fs-extra";
-import { transform } from "babel-core";
+import { transform, TransformOptions } from "babel-core";
 import { ConfigReader } from "../util";
-
-const babelConfig = {
-  presets: [
-    [
-      "env",
-      {
-        targets: { browsers: [">0.25%"] }
-      }
-    ]
-  ]
-};
 
 export interface BrowserConfig {
   manifestUrl: string;
   interceptSrc: string;
   interceptDest: string;
-  minifyWorkerFiles: boolean;
+  babelTransformOptions: TransformOptions;
 }
 
 export default function(vorpal: any) {
@@ -42,8 +31,8 @@ export function createWorkerImplCode(): ConfigReader<BrowserConfig, string> {
       ${ReverseProxy.toString()}
       const proxy = (new ReverseProxy("${config.get("interceptSrc")}", "${config.get("interceptDest")}"))
       proxy.setup()
-    `,
-      babelConfig
+      `,
+      config.get("babelTransformOptions")
     );
 
     return workerImpl.code || "";
@@ -76,7 +65,7 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
           });
       }
     `,
-      babelConfig
+      config.get("babelTransformOptions")
     );
 
     return workerReg.code || "";
@@ -140,11 +129,7 @@ class ReverseProxy {
     }
   ];
 
-  constructor(
-    private interceptSrc: string, 
-    private interceptDest: string, 
-    private objectStore = ReverseProxy.getOrCreateStore()
-  ) {}
+  constructor(private interceptSrc: string, private interceptDest: string, private objectStore = ReverseProxy.getOrCreateStore()) {}
 
   public setup() {
     self.addEventListener("install", this.handleInstallEvent);
@@ -174,13 +159,13 @@ class ReverseProxy {
     skipWaiting();
   }
 
-  private handleFetchEvent = function (this: ReverseProxy, event: any): void {
+  private handleFetchEvent = function(this: ReverseProxy, event: any): void {
     for (var i = 0, n = this.endpoints.length; i < n; i++) {
       if (this.endpoints[i].matcher.call(this, event)) {
         return this.endpoints[i].handler.call(this, event);
       }
     }
-  }.bind(this)
+  }.bind(this);
 
   public static getOrCreateStore() {
     return new Promise((resolve, reject) => {
