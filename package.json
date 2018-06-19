@@ -2,10 +2,8 @@
   "name": "wcm",
   "version": "0.0.4",
   "description": "Web Components Manager, a tool to version web components",
-  "bin": {
-    "wcm": "dist"
-  },
-  "main": "dist",
+  "bin": "dist/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "lint": "prettier --config \".prettierrc\" --write \"src/**/*\"",
     "prepare": "tsc",
