@@ -6,6 +6,7 @@
     "module": "commonjs",
     "strict": true,
     "declaration": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }

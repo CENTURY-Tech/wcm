@@ -1,20 +1,12 @@
 import * as path from "path";
-import { VorpalCommand } from "../vorpal";
-import { ConfigReader } from "../util";
-import { Dependency } from "../util/classes/Dependency";
-import { listConfig, getConfig, setConfig } from "../util/methods/config";
-import { logIterator, logAsyncIterator, displayProgress } from "../util/methods/logging";
 import { copy, writeJson } from "fs-extra";
-import { GlobalConfig } from "./config";
-
-export interface MigrationConfig {
-  depsRootDir: string;
-  depsOutDir: string;
-  packageFile: string;
-  packageLookupName: string;
-  packageLookupDependencies: string;
-  packageLookupVersion: string;
-}
+import { VorpalCommand } from "../../vorpal";
+import { ConfigReader } from "../../util";
+import { Dependency } from "../../util/classes/Dependency";
+import { listConfig, getConfig, setConfig } from "../../util/methods/config";
+import { logIterator, logAsyncIterator, displayProgress } from "../../util/methods/logging";
+import { GlobalConfig } from "../config/index";
+import { MigrationConfig } from "./config";
 
 export default function(vorpal: any) {
   vorpal

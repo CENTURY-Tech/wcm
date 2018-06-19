@@ -1,12 +1,8 @@
-import { VorpalCommand } from "../vorpal";
-import { listConfig, getConfig, setConfig } from "../util/methods/config";
-import { logIterator } from "../util/methods/logging";
-import { GlobalConfig } from "./config";
-
-export interface ProxyConfig {
-  host: string;
-  port: number;
-}
+import { VorpalCommand } from "../../vorpal";
+import { listConfig, getConfig, setConfig } from "../../util/methods/config";
+import { logIterator } from "../../util/methods/logging";
+import { GlobalConfig } from "../config/index";
+import { ProxyConfig } from "./config";
 
 export default function(vorpal: any) {
   vorpal

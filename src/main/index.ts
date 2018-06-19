@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import browser from "./lib/browser.js";
+import browser from "./lib/browser";
 import config from "./lib/config";
 import migration from "./lib/migration";
 import server from "./lib/proxy";

@@ -1,15 +1,9 @@
-import { VorpalCommand } from "../vorpal";
-import { GlobalConfig } from "./config";
+import { VorpalCommand } from "../../vorpal";
+import { GlobalConfig } from "../config";
 import { writeFile } from "fs-extra";
-import { transform, TransformOptions } from "babel-core";
-import { ConfigReader } from "../util";
-
-export interface BrowserConfig {
-  manifestUrl: string;
-  interceptSrc: string;
-  interceptDest: string;
-  babelTransformOptions: TransformOptions;
-}
+import { transform } from "babel-core";
+import { ConfigReader } from "../../util";
+import { BrowserConfig } from "./config";
 
 export default function(vorpal: any) {
   vorpal.command("browser init", "Prepare the Service Worker impl/reg files").action(async function(this: VorpalCommand, args: any) {
@@ -72,8 +66,6 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
   });
 }
 
-declare const skipWaiting: any;
-
 interface ProxyEndpoints {
   matcher(this: ReverseProxy, event: any): boolean;
   handler(this: ReverseProxy, event: any): void;
@@ -133,11 +125,13 @@ class ReverseProxy {
 
   public setup() {
     self.addEventListener("install", this.handleInstallEvent);
+    self.addEventListener("activate", this.handleActivateEvent);
     self.addEventListener("fetch", this.handleFetchEvent);
   }
 
   public teardown() {
     self.removeEventListener("install", this.handleInstallEvent);
+    self.removeEventListener("activate", this.handleActivateEvent);
     self.removeEventListener("fetch", this.handleFetchEvent);
   }
 
@@ -154,9 +148,11 @@ class ReverseProxy {
   }
 
   private handleInstallEvent(event: any): void {
-    console.log("Service Worker Installed");
     caches.delete("wcm");
-    skipWaiting();
+  }
+
+  private handleActivateEvent(event: any): void {
+    event.waitUntil((self as any).clients.claim());
   }
 
   private handleFetchEvent = function(this: ReverseProxy, event: any): void {
