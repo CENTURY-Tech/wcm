@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import browser from "./lib/browser.js";
 import config from "./lib/config";
 import migration from "./lib/migration";
