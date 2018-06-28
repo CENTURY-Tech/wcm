@@ -1,0 +1,27 @@
+site_name: Web Component Manager
+site_description: The dependency manager for Web Components.
+
+repo_name: century-tech/wcm
+repo_url: https://github.com/CENTURY-Tech/wcm
+
+pages:
+    - Home: index.md
+    - About: about.md
+    - Usage: usage.md
+
+theme:
+  name: material
+  palette:
+    primary: teal
+    accent: indigo
+
+markdown_extensions:
+  - admonition
+  - codehilite
+
+extra:
+  social:
+    - type: github
+      link: https://github.com/CENTURY-Tech/wcm
+    - type: twitter
+      link: https://twitter.com/thisiscentury
