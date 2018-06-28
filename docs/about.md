@@ -7,8 +7,8 @@
 
 Unbundled projects, specifically those that are leveraging Web Components, suffer from some interesting caching obstacles. The toughest
 being that you can't aggressively cache imports, as lookup paths aren't updated when dependencies are updated, and this has been a key
-downside holding back the wide adoption of unbundled code distrubution. Another issue haunting some frontend developers, that doesn't only
-affect unbundled projects but mostly pokes it's ugly head into Bower managed projects, is poor dependency resolution.
+downside holding back the wide adoption of unbundled code distribution. Another issue haunting some frontend developers, that doesn't only
+affect unbundled projects but mostly pokes its ugly head into Bower managed projects, is poor dependency resolution.
 
 The two issues outlined above are the inspiration behind WCM. Web applications need a reliable tool to organise their dependencies that
 also complements the environment that they run in.
