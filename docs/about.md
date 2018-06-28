@@ -5,7 +5,7 @@
 
 ## Motivation
 
-Unbundled projects, specifically those that are leveraging Web Components, suffer from some interesting cacheing obstacles. The toughest
+Unbundled projects, specifically those that are leveraging Web Components, suffer from some interesting caching obstacles. The toughest
 being that you can't aggressively cache imports, as lookup paths aren't updated when dependencies are updated, and this has been a key
 downside holding back the wide adoption of unbundled code distrubution. Another issue haunting some frontend developers, that doesn't only
 affect unbundled projects but mostly pokes it's ugly head into Bower managed projects, is poor dependency resolution.
