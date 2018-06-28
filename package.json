@@ -5,9 +5,10 @@
   "bin": "dist/index.js",
   "main": "dist/index.js",
   "scripts": {
-    "lint": "prettier --config \".prettierrc\" --write \"src/**/*\"",
+    "lint:dry": "prettier --config \".prettierrc\" --debug-check \"{docs,src}/**/*\"",
+    "lint:fix": "prettier --config \".prettierrc\" --write \"{docs,src}/**/*\"",
     "prepare": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Warning: no test specified\""
   },
   "keywords": [
     "web",
@@ -21,7 +22,6 @@
     "cosmiconfig": "5.0.2",
     "fs-extra": "6.0.1",
     "monet": "0.8.10",
-    "uglify-js": "^3.4.0",
     "vorpal": "1.12.0"
   },
   "devDependencies": {
@@ -29,7 +29,6 @@
     "@types/cosmiconfig": "5.0.2",
     "@types/fs-extra": "5.0.3",
     "@types/node": "10.3.2",
-    "@types/uglify-js": "^3.0.2",
     "prettier": "1.13.4",
     "typescript": "2.9.1"
   }
