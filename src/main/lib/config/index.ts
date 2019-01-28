@@ -23,6 +23,9 @@ export default async function(vorpal: any) {
   if (result) {
     for (const namespace in result.config) {
       switch (namespace) {
+        case "browser":
+          GlobalConfig.browser.updateInstance(result.config[namespace]);
+          break;
         case "migration":
           GlobalConfig.migration.updateInstance(result.config[namespace]);
           break;
