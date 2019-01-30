@@ -38,25 +38,46 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
     const workerReg = transform(
       `
       if ('serviceWorker' in navigator && 'fetch' in window) {
-        navigator.serviceWorker.register('./wcm-impl.js')
-          .then(registration => {
-            console.log('Registered at scope: %s', registration.scope);
-
-            fetch('${config.get("manifestUrl")}').then(response => {
-              response.json().then(manifest => {
-                fetch('/wcm/manifest', {
-                  method: 'POST',
-                  body: JSON.stringify(manifest),
-                  headers: {
-                    'content-type': 'application/json'
-                  },
-                })
-              })
-            })
-          })
-          .catch(error => {
-            console.log('Registration failed: %s', error);
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          return Promise.all(registrations.map(registration => {
+            return registration.unregister();
+          }));
+        })
+        .then(() => {
+          return navigator.serviceWorker.register('./wcm-impl.js');
+        })
+        .then(() => {
+          return fetch('./manifest.json').then(response => {
+            response.json().then(manifest => {
+              fetch('/wcm/manifest', {
+                method: 'POST',
+                body: JSON.stringify(manifest),
+                headers: {
+                  'content-type': 'application/json'
+                }
+              });
+            });
           });
+        })
+        .then(() => {
+          window.dispatchEvent(new CustomEvent('WCMLoaded'));
+        })
+        .catch(err => {
+          console.log('Registration failed: %s', err);
+        });
+      }
+
+      function loadable(obj, tagname) {
+        const elem = document.createElement(tagname);
+      
+        Object.keys(obj).map(key => {
+          elem.setAttribute(key, obj[key]);
+        });
+      
+        return new Promise(resolve => {
+          elem.onload = resolve;
+          document.body.appendChild(elem);
+        });
       }
     `,
       config.get("babelTransformOptions")
@@ -77,11 +98,21 @@ class ReverseProxy {
       matcher: (event: any) => {
         return new URL(event.request.url).pathname === "/wcm/manifest" && event.request.method === "POST";
       },
-      handler: function(event: any) {
+      handler: (event: any) => {
         event.respondWith(
           event.request.json().then((manifest: any) => {
             return this.setManifest(manifest).then(() => new Response());
           })
+        );
+      }
+    },
+    {
+      matcher: (event: any) => {
+        return new URL(event.request.url).pathname === "/wcm/flush" && event.request.method === "POST";
+      },
+      handler: (event: any) => {
+        event.respondWith(
+          caches.delete("wcm").then(() => new Response())
         );
       }
     },
@@ -108,7 +139,7 @@ class ReverseProxy {
                     }
                   );
 
-                  return fetch(versionedUrl).then(networkResponse => {
+                  return fetch(versionedUrl.slice(1)).then(networkResponse => {
                     cache.put(event.request, networkResponse.clone());
                     return networkResponse;
                   });
@@ -121,7 +152,11 @@ class ReverseProxy {
     }
   ];
 
-  constructor(private interceptSrc: string, private interceptDest: string, private objectStore = ReverseProxy.getOrCreateStore()) {}
+  constructor(
+    private interceptSrc: string,
+    private interceptDest: string,
+    private objectStore = ReverseProxy.getOrCreateStore()
+  ) {}
 
   public setup() {
     self.addEventListener("install", this.handleInstallEvent);
