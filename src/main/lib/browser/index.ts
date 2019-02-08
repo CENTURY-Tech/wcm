@@ -128,19 +128,21 @@ class ReverseProxy {
             }
 
             return caches.open("wcm").then(cache => {
-              return cache.match(event.request).then(cachedResponse => {
+              const versionedUrl = new URL(event.request.url).pathname.replace(
+                new RegExp(this.interceptSrc + "/(.+?(?=/))", "g"),
+                (_, dependencyName) => {
+                  return [this.interceptDest, dependencyName, manifest[dependencyName]].join("/");
+                }
+              );
+
+              const request = new Request(versionedUrl.slice(1), event.request)
+
+              return cache.match(request).then(cachedResponse => {
                 if (cachedResponse) {
                   return cachedResponse;
                 } else {
-                  const versionedUrl = new URL(event.request.url).pathname.replace(
-                    new RegExp(this.interceptSrc + "/(.+?(?=/))", "g"),
-                    (_, dependencyName) => {
-                      return [this.interceptDest, dependencyName, manifest[dependencyName]].join("/");
-                    }
-                  );
-
-                  return fetch(versionedUrl.slice(1)).then(networkResponse => {
-                    cache.put(event.request, networkResponse.clone());
+                  return fetch(request.url).then(networkResponse => {
+                    cache.put(request, networkResponse.clone());
                     return networkResponse;
                   });
                 }
