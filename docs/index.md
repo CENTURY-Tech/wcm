@@ -2,8 +2,7 @@
 
 Welcome to the documentation site for WCM, the dependency manager for Web Components.
 
-!!! warning
-    This project is currenty in beta, and while we're confident that it's awesome it's certainly not production ready!
+!!! warning This project is currenty in beta, and while we're confident that it's awesome it's certainly not production ready!
 
 ## Getting started
 

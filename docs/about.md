@@ -1,7 +1,6 @@
 # About
 
-!!! warning
-    This project is currenty in beta, and while we're confident that it's awesome it's certainly not production ready!
+!!! warning This project is currenty in beta, and while we're confident that it's awesome it's certainly not production ready!
 
 ## Motivation
 
@@ -10,8 +9,8 @@ being that you can't aggressively cache imports, as lookup paths aren't updated 
 downside holding back the wide adoption of unbundled code distribution. Another issue haunting some frontend developers, that doesn't only
 affect unbundled projects but mostly pokes its ugly head into Bower managed projects, is poor dependency resolution.
 
-The two issues outlined above are the inspiration behind WCM. Web applications need a reliable tool to organise their dependencies that
-also complements the environment that they run in.
+The two issues outlined above are the inspiration behind WCM. Web applications need a reliable tool to organise their dependencies that also
+complements the environment that they run in.
 
 ## Solution
 

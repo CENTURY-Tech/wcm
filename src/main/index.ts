@@ -1,20 +1,26 @@
 #!/usr/bin/env node
 
+import * as vorpal from "vorpal";
 import browser from "./lib/browser";
+import bundle from "./lib/bundle";
 import config from "./lib/config";
+import install from "./lib/install";
 import migration from "./lib/migration";
-import server from "./lib/proxy";
+import proxy from "./lib/proxy";
 
-/**
- * Until Vorpal either supports, or provides definitions for Typescript, this
- * hack is in place to import the library.
- */
-export const cli = require("vorpal")()
+export const cli = (new vorpal)
   .history(".wcm_history")
   .use(browser)
+  .use(bundle)
   .use(config)
+  .use(install)
   .use(migration)
-  .use(server);
+  .use(proxy);
+
+(cli as any).on("client_command_error", () => {
+  console.log("\nHow embarassing, this wasn't meant to happen... Please report this error!\n");
+  process.exit(1);
+})
 
 if (!module.parent) {
   if ((process.argv[0].endsWith("wcm") && process.argv.length > 1) || (process.argv[0].endsWith("node") && process.argv.length > 2)) {

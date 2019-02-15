@@ -11,7 +11,7 @@ export function ConfigFactory<T>(defaultConfig: T): ConfigFactory<T> {
 
   return {
     /**
-     * Retrieve the `parserConfigInstance` singleton or create and assign a new one if required.
+     * Retrieve the `configInstance` singleton or create and assign a new one if required.
      */
     getOrCreateInstance(config: Partial<T> = {}): Config<T> {
       if (!configInstance) {
@@ -31,7 +31,7 @@ export function ConfigFactory<T>(defaultConfig: T): ConfigFactory<T> {
     },
 
     /**
-     * Clear the `parserConfigInstance` singleton.
+     * Clear the `configInstance` singleton.
      */
     destroyInstance(): void {
       configInstance = null;

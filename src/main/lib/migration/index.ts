@@ -1,6 +1,6 @@
 import * as path from "path";
+import * as Vorpal from "vorpal";
 import { copy, writeJson } from "fs-extra";
-import { VorpalCommand } from "../../vorpal";
 import { ConfigReader } from "../../util";
 import { Dependency } from "../../util/classes/Dependency";
 import { listConfig, getConfig, setConfig } from "../../util/methods/config";
@@ -8,11 +8,10 @@ import { logIterator, logAsyncIterator, displayProgress } from "../../util/metho
 import { GlobalConfig } from "../config/index";
 import { MigrationConfig } from "./config";
 
-export default function(vorpal: any) {
+export default function(vorpal: Vorpal) {
   vorpal
     .command("migration config list", "List the current config for the migrator")
-    .alias("migration config-list", "migration list-config")
-    .action(async function(this: VorpalCommand, args: any) {
+    .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
       await listConfig<MigrationConfig>()
         .map(logIterator(this, "%s: %s"))
         .run(GlobalConfig.migration.getOrCreateInstance());
@@ -20,8 +19,7 @@ export default function(vorpal: any) {
 
   vorpal
     .command("migration config get <key>", "Get a config value for the migrator")
-    .alias("migration config-get", "migration get-config")
-    .action(async function(this: VorpalCommand, args: any) {
+    .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
       await getConfig<MigrationConfig>(args.key)
         .map(this.log)
         .run(GlobalConfig.migration.getOrCreateInstance());
@@ -29,16 +27,14 @@ export default function(vorpal: any) {
 
   vorpal
     .command("migration config set <key> <value>", "Set a config value for the migrator")
-    .alias("migration config-set", "migration set-config")
-    .action(async function(this: VorpalCommand, args: any) {
+    .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
       await setConfig<MigrationConfig>(args.key, args.value).run(GlobalConfig.migration.getOrCreateInstance());
     });
 
   vorpal
     .command("migration deps list", "List the installed dependencies in your project")
     .option("-o ,--outFile <path>", "Specifiy a path to output the dependencies object")
-    .alias("migration deps-list", "migration list-deps")
-    .action(async function(this: VorpalCommand, args: any) {
+    .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
       await listDependencies()
         .map(async iterator => {
           if (args.options.outFile) {
@@ -56,11 +52,13 @@ export default function(vorpal: any) {
         .run(GlobalConfig.migration.getOrCreateInstance());
     });
 
-  vorpal.command("migration run", "Migrate your project to use WCM fully").action(async function(this: VorpalCommand, args: any) {
-    await runMigration()
-      .map(displayProgress(vorpal, "(%s/%s) %s"))
-      .run(GlobalConfig.migration.getOrCreateInstance());
-  });
+  vorpal
+    .command("migration run", "Migrate your project to use WCM fully")
+    .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
+      await runMigration()
+        .map(displayProgress(vorpal, "(%s/%s) %s"))
+        .run(GlobalConfig.migration.getOrCreateInstance());
+    });
 }
 
 /**
@@ -84,8 +82,8 @@ function runMigration(): ConfigReader<MigrationConfig, AsyncIterableIterator<[st
     }
 
     for await (const [dependency, copy] of steps) {
-      yield [completed++, steps.length, await dependency.getName()];
       await copy();
+      yield [++completed, steps.length, await dependency.getName()];
     }
 
     yield [completed, steps.length, "Finished"];

@@ -1,21 +1,23 @@
-import { VorpalCommand } from "../../vorpal";
+import * as Vorpal from "vorpal";
 import { GlobalConfig } from "../config";
 import { writeFile } from "fs-extra";
 import { transform } from "babel-core";
 import { ConfigReader } from "../../util";
 import { BrowserConfig } from "./config";
 
-export default function(vorpal: any) {
-  vorpal.command("browser init", "Prepare the Service Worker impl/reg files").action(async function(this: VorpalCommand, args: any) {
-    return Promise.all([
-      createWorkerImplCode()
-        .map(_ => writeFile("wcm-impl.js", _))
-        .run(GlobalConfig.browser.getOrCreateInstance()),
-      createWorkerRegCode()
-        .map(_ => writeFile("wcm-reg.js", _))
-        .run(GlobalConfig.browser.getOrCreateInstance())
-    ]);
-  });
+export default function(vorpal: Vorpal) {
+  vorpal
+    .command("browser init", "Prepare the Service Worker impl/reg files")
+    .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
+      return Promise.all([
+        createWorkerImplCode()
+          .map(_ => writeFile("wcm-impl.js", _))
+          .run(GlobalConfig.browser.getOrCreateInstance()),
+        createWorkerRegCode()
+          .map(_ => writeFile("wcm-reg.js", _))
+          .run(GlobalConfig.browser.getOrCreateInstance())
+      ]).then(() => void null);
+    });
 }
 
 export function createWorkerImplCode(): ConfigReader<BrowserConfig, string> {
@@ -111,9 +113,7 @@ class ReverseProxy {
         return new URL(event.request.url).pathname === "/wcm/flush" && event.request.method === "POST";
       },
       handler: (event: any) => {
-        event.respondWith(
-          caches.delete("wcm").then(() => new Response())
-        );
+        event.respondWith(caches.delete("wcm").then(() => new Response()));
       }
     },
     {
@@ -135,7 +135,7 @@ class ReverseProxy {
                 }
               );
 
-              const request = new Request(versionedUrl.slice(1), event.request)
+              const request = new Request(versionedUrl.slice(1), event.request);
 
               return cache.match(request).then(cachedResponse => {
                 if (cachedResponse) {
@@ -154,11 +154,7 @@ class ReverseProxy {
     }
   ];
 
-  constructor(
-    private interceptSrc: string,
-    private interceptDest: string,
-    private objectStore = ReverseProxy.getOrCreateStore()
-  ) {}
+  constructor(private interceptSrc: string, private interceptDest: string, private objectStore = ReverseProxy.getOrCreateStore()) {}
 
   public setup() {
     self.addEventListener("install", this.handleInstallEvent);

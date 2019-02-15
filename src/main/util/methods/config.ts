@@ -3,10 +3,10 @@ import { ConfigReader } from "..";
 /**
  * List the currently stored configuration.
  */
-export function listConfig<T>(): ConfigReader<T, IterableIterator<[keyof T, T[keyof T]]>> {
+export function listConfig<T>(): ConfigReader<T, IterableIterator<[keyof T, string]>> {
   return ConfigReader(function*(config) {
     for (const key of config.assignableKeys) {
-      yield [key, config.get(key)] as [keyof T, T[keyof T]];
+      yield [key, JSON.stringify(config.get(key), null, 2)] as [keyof T, string];
     }
   });
 }
@@ -17,8 +17,8 @@ export function listConfig<T>(): ConfigReader<T, IterableIterator<[keyof T, T[ke
  *
  * @param key
  */
-export function getConfig<T, K extends keyof T = keyof T>(key: K): ConfigReader<T, T[K]> {
-  return ConfigReader(config => config.get(key));
+export function getConfig<T, K extends keyof T = keyof T>(key: K): ConfigReader<T, string> {
+  return ConfigReader(config => JSON.stringify(config.get(key), null, 2));
 }
 
 /**
