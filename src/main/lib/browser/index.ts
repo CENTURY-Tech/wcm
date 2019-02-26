@@ -67,6 +67,8 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
         .catch(err => {
           console.log('Registration failed: %s', err);
         });
+      } else {
+        console.warn("Service workers not supported!")
       }
 
       function loadable(obj, tagname) {
@@ -128,25 +130,37 @@ class ReverseProxy {
             }
 
             return caches.open("wcm").then(cache => {
+              let development: boolean = false;
+
               const versionedUrl = new URL(event.request.url).pathname.replace(
                 new RegExp(this.interceptSrc + "/(.+?(?=/))", "g"),
                 (_, dependencyName) => {
-                  return [this.interceptDest, dependencyName, manifest[dependencyName]].join("/");
+                  const version = manifest[dependencyName];
+
+                  switch (version) {
+                    case "development":
+                      development = true;
+                      return [this.interceptSrc, dependencyName].join("/");
+                    default:
+                      return [this.interceptDest, dependencyName, version].join("/");
+                  }
                 }
               );
 
               const request = new Request(versionedUrl.slice(1), event.request);
 
-              return cache.match(request).then(cachedResponse => {
-                if (cachedResponse) {
-                  return cachedResponse;
-                } else {
-                  return fetch(request.url).then(networkResponse => {
-                    cache.put(request, networkResponse.clone());
-                    return networkResponse;
-                  });
-                }
-              });
+              return development
+                ? fetch(request.url)
+                : cache.match(request).then(cachedResponse => {
+                  if (cachedResponse) {
+                    return cachedResponse;
+                  } else {
+                    return fetch(request.url).then(networkResponse => {
+                      cache.put(request, networkResponse.clone());
+                      return networkResponse;
+                    });
+                  }
+                });
             });
           })
         );
@@ -181,7 +195,7 @@ class ReverseProxy {
   }
 
   private handleInstallEvent(event: any): void {
-    caches.delete("wcm");
+    (self as any).skipWaiting();
   }
 
   private handleActivateEvent(event: any): void {
