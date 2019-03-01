@@ -1,13 +1,16 @@
 import * as path from "path";
+import * as util from "util";
 import * as Vorpal from "vorpal";
-import { readFileSync, statSync, mkdirSync, writeFileSync } from "fs";
+import { readFile } from "fs";
 import { load } from "cheerio";
 import { ConfigReader } from "../../util";
 import { listConfig, getConfig, setConfig } from "../../util/methods/config";
 import { logIterator, displayProgress } from "../../util/methods/logging";
-import { GlobalConfig } from "../config/index";
+import { GlobalConfig } from "../config";
 import { BundleConfig } from "./config";
-import { TSBundler } from "./bundlers/TSBlunder";
+import { HTMLBundler } from "./bundlers/html-bundler";
+import { TSBundler } from "./bundlers/ts-bundler";
+import { Bundler } from "./bundlers/Bundler";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -40,66 +43,101 @@ export default function(vorpal: Vorpal) {
 }
 
 function bundleProject(): ConfigReader<BundleConfig, AsyncIterableIterator<[string, string, string]>> {
-  return ConfigReader(async function*(config) {
+  return walkProject("internal").flatMap(iterator => ConfigReader(async function* (config) {
+    const htmlBundler = new HTMLBundler();
     const tsBundler = new TSBundler();
 
     const bundleSrcDir = config.get("bundleSrcDir");
     const bundleOutDir = config.get("bundleOutDir");
-    const components = config.get("components");
 
-    let pending = 0;
     let completed = 0;
+    let pending = 0;
 
-    for (const groupRoot in components) {
-      pending += components[groupRoot].length;
-      yield [completed, pending, `Building: ${groupRoot}`];
+    for await (const [ref, contents, filepath] of iterator) {
+      yield [completed, ++pending, "Walking project"]
 
-      for (const entry of components[groupRoot]) {
-        build(tsBundler, groupRoot, path.resolve(), entry as string, bundleSrcDir, bundleOutDir);
-        yield [++completed, pending, `Building: ${groupRoot}`];
+      switch (path.extname(filepath)) {
+        case ".ts":
+          tsBundler.addRootName([ref, contents, filepath]); break;
+        case ".html":
+          htmlBundler.addRootName([ref, contents, filepath]); break;
+        default:
+          throw Error(`Unhandled file extension: "${path.extname(filepath)}"`);
       }
     }
 
-    yield [completed, pending, "Transpiling TS"];
-    tsBundler.execCompilation({ bundleSrcDir, bundleOutDir });
+    yield [completed, pending, "Processing TS"];
+    for await (const [] of tsBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
+      yield [++completed, pending, "Processing TS"];
+    }
+
+    yield [completed, pending, "Processing HTML"];
+    for await (const [] of htmlBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
+      yield [++completed, pending, "Processing HTML"];
+    }
+
     yield [completed, pending, "Finished"];
-  });
+  }));
 }
 
-function build(tsBundler: TSBundler, groupRoot: string, projectRoot: string, srcPath: string, srcRoot: string, distRoot: string) {
-  const $ = load(readFileSync(path.resolve(projectRoot, srcRoot, srcPath), { encoding: "utf8" }));
+export function walkProject<E extends BundleConfig>(mode: "internal" | "external"): ConfigReader<E, AsyncIterableIterator<Bundler.RootName>> {
+  return ConfigReader(async function*(config) {
+    const bundleSrcDir = config.get("bundleSrcDir");
+    const components = config.get("components");
 
-  $('link[rel="import"]').each(function(this: Cheerio) {
-    const href = $(this).attr("href");
-    const lookup = path.relative(srcRoot, path.resolve(srcRoot, path.dirname(srcPath), href));
+    const found: string[] = [];
 
-    if (lookup.startsWith(groupRoot)) {
-      build(tsBundler, groupRoot, projectRoot, lookup, srcRoot, distRoot);
+    for (const [groupRoot, entry] of flattenComponents(components)) {
+      for await (const [ref, contents, filepath] of walkSource(groupRoot, path.resolve(), entry, bundleSrcDir, found)) {
+        switch (mode) {
+          case "internal":
+            yield [ref, contents, filepath]; break;
+          case "external":
+            yield [ref, contents, filepath]; yield *walkSource(groupRoot, path.resolve(), filepath, bundleSrcDir, found); break;
+        }
+      }
     }
   });
 
-  $("script[src]").each(function(this: Cheerio) {
-    const src = $(this).attr("src");
+  async function *walkSource(groupRoot: string, projectRoot: string, srcPath: string, srcRoot: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
+    const $ = load(await util.promisify(readFile)(path.resolve(projectRoot, srcRoot, srcPath), "utf8"));
 
-    if (src.endsWith(".ts")) {
-      tsBundler.addRootName(path.resolve(projectRoot, srcRoot, path.dirname(srcPath), src));
-      $(this).attr("src", replaceExt(src, ".js"));
+    for (const elem of $('link[rel="import"]').toArray()) {
+      const href = $(elem).attr("href");
+      const lookup = path.relative(srcRoot, path.resolve(srcRoot, path.dirname(srcPath), href));
+
+      if (lookup.startsWith(groupRoot) && !found.includes(lookup)) {
+        yield *walkSource(groupRoot, projectRoot, lookup, srcRoot, found.concat([lookup]));
+      }
+
+      switch (mode) {
+        case "internal":
+          if (lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
+        case "external":
+          if (!lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
+      }
     }
-  });
 
-  const outPath = path.resolve(projectRoot, distRoot, srcPath);
+    for (const elem of $('script[src]').toArray()) {
+      const src = $(elem).attr("src");
+      const lookup = path.relative(srcRoot, path.resolve(srcRoot, path.dirname(srcPath), src));
 
-  try {
-    statSync(path.dirname(outPath));
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      mkdirSync(path.dirname(outPath), { recursive: true } as any);
+      if (lookup.startsWith(groupRoot) && !found.includes(lookup)) {
+        yield *walkSource(groupRoot, projectRoot, lookup, srcRoot, found.concat([lookup]));
+      }
+
+      switch (mode) {
+        case "internal":
+          if (lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
+        case "external":
+          if (!lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
+      }
     }
   }
-
-  writeFileSync(outPath, (($("head").html() as string) + $("body").html()) as string);
 }
 
-function replaceExt(target: string, ext: string) {
-  return path.join(path.dirname(target), path.basename(target, path.extname(target)) + ext);
+function flattenComponents(components: Record<string, string[]>): Array<[string, string]> {
+  return Object.entries(components).reduce((acc, [groupRoot, entries]) => {
+    return acc.concat(entries.map((entry): [string, string] => ([groupRoot, entry])));
+  }, [] as Array<[string, string]>);
 }

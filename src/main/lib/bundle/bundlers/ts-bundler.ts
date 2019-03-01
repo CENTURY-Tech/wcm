@@ -1,20 +1,21 @@
+import * as path from "path";
 import { CompilerOptions, ModuleKind, ScriptTarget } from "typescript";
+
+import { Bundler } from "./Bundler";
 
 // We're only interested in the local instalation of Typescript, nothing else!
 const ts = require(require.resolve("typescript", { paths: [process.cwd()] }));
 
-export class TSBundler {
+export class TSBundler extends Bundler {
   constructor(
     public compilerOptions: CompilerOptions = require(require.resolve("tsconfig.json", { paths: [process.cwd()] })).compilerOptions,
-    public rootNames: string[] = []
-  ) {}
-
-  public addRootName(rootName: string) {
-    this.rootNames.push(rootName);
+    public rootNames: Bundler.RootName[] = []
+  ) {
+    super(rootNames);
   }
 
-  public execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>) {
-    const program = ts.createProgram(this.rootNames, {
+  public *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>) {
+    const program = ts.createProgram(this.rootNames.map(([,, _]) => path.resolve(bundleSrcDir, _)), {
       ...this.compilerOptions,
 
       rootDir: bundleSrcDir,
@@ -63,6 +64,11 @@ export class TSBundler {
     if (diagnostics.length) {
       diagnostics.forEach(TSBundler.reportDiagnostic);
     }
+
+    for (const [ref, contents, filename] of this.rootNames) {
+      ref.attr("src", replaceExt(ref.attr("src"), ".js"));
+      yield [ref, contents, filename];
+    }
   }
 
   private static reportDiagnostic({ file, messageText, start }: any) {
@@ -75,4 +81,8 @@ export class TSBundler {
       console.log("%s: %s", message);
     }
   }
+}
+
+function replaceExt(target: string, ext: string) {
+  return path.join(path.dirname(target), path.basename(target, path.extname(target)) + ext);
 }
