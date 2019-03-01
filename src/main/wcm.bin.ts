@@ -1,21 +1,6 @@
 #!/usr/bin/env node
 
-import * as vorpal from "vorpal";
-import browser from "./lib/browser";
-import bundle from "./lib/bundle";
-import config from "./lib/config";
-import install from "./lib/install";
-import migration from "./lib/migration";
-import proxy from "./lib/proxy";
-
-export const cli = (new vorpal)
-  .history(".wcm_history")
-  .use(browser)
-  .use(bundle)
-  .use(config)
-  .use(install)
-  .use(migration)
-  .use(proxy);
+import { cli } from "./wcm";
 
 (cli as any).on("client_command_error", () => {
   console.log("\nHow embarassing, this wasn't meant to happen... Please report this error!\n");
