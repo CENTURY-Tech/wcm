@@ -1,8 +1,13 @@
+import * as http from "http";
 import * as Vorpal from "vorpal";
 import { listConfig, getConfig, setConfig } from "../../util/methods/config";
+import { ConfigReader, CombinedConfigReader } from "../../util";
 import { logIterator } from "../../util/methods/logging";
 import { GlobalConfig } from "../config/index";
 import { ProxyConfig } from "./config";
+import { ReverseProxy } from "../browser";
+import { BrowserConfig } from "../browser/config";
+import { Config } from "../../util/classes/config";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -35,3 +40,19 @@ export default function(vorpal: Vorpal) {
     this.log("???");
   });
 }
+
+let server: http.Server;
+
+export const startProxy = CombinedConfigReader<[ProxyConfig, BrowserConfig], void>((config) => {
+  const manifest = require(require.resolve("manifest.json", { paths: [process.cwd()] }));
+
+  const interceptSrc = config[1].get("interceptSrc");
+  const interceptDest = config[1].get("interceptDest");
+
+  server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
+    const { versionedUrl } = ReverseProxy.resolveUrl(req.url as string, manifest, { interceptSrc, interceptDest });
+    res.end("");
+  }).listen(config[0].get("port"));
+});
+
+export const stopProxy = () => server.close();

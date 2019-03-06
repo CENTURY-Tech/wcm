@@ -1,7 +1,7 @@
 import * as path from "path";
 import { pathExists, readJson } from "fs-extra";
-import { CaseClass } from "../decorators/CaseClass";
-import { MemoizeProcedure } from "../decorators/MemoizeProcedure";
+import { CaseClass } from "../decorators/case-class";
+import { MemoizeProcedure } from "../decorators/memoize-procedure";
 
 export class Dependency extends CaseClass(
   class {

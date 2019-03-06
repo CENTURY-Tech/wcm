@@ -1,4 +1,6 @@
-export interface ProxyConfig {
+import { ConfigTarget } from "../../util/classes/Config";
+
+export interface ProxyConfig extends ConfigTarget {
   host: string;
   port: number;
 }

@@ -1,8 +1,12 @@
+export interface ConfigTarget {
+  private ?: any
+};
+
 /**
  * A simple configuration store with typesafe `get` and `set` methods. An array of `assignableKeys` is assigned on
  * construction to provide a safe iterable when listing the configuration keys.
  */
-export class Config<T> {
+export class Config<T extends ConfigTarget> {
   constructor(private config: T, public assignableKeys: Array<keyof T> = Object.keys(config) as (keyof T)[]) {}
 
   /**

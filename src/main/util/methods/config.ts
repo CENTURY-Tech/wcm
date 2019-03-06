@@ -1,9 +1,10 @@
 import { ConfigReader } from "..";
+import { ConfigTarget } from "../classes/Config";
 
 /**
  * List the currently stored configuration.
  */
-export function listConfig<T>(): ConfigReader<T, IterableIterator<[keyof T, string]>> {
+export function listConfig<T extends ConfigTarget>(): ConfigReader<T, IterableIterator<[keyof T, string]>> {
   return ConfigReader(function*(config) {
     for (const key of config.assignableKeys) {
       yield [key, JSON.stringify(config.get(key), null, 2)] as [keyof T, string];
@@ -17,7 +18,7 @@ export function listConfig<T>(): ConfigReader<T, IterableIterator<[keyof T, stri
  *
  * @param key
  */
-export function getConfig<T, K extends keyof T = keyof T>(key: K): ConfigReader<T, string> {
+export function getConfig<T extends ConfigTarget, K extends keyof T = keyof T>(key: K): ConfigReader<T, string> {
   return ConfigReader(config => JSON.stringify(config.get(key), null, 2));
 }
 
@@ -28,6 +29,6 @@ export function getConfig<T, K extends keyof T = keyof T>(key: K): ConfigReader<
  * @param key
  * @param value
  */
-export function setConfig<T, K extends keyof T = keyof T>(key: K, value: T[K]): ConfigReader<T, void> {
+export function setConfig<T extends ConfigTarget, K extends keyof T = keyof T>(key: K, value: T[K]): ConfigReader<T, void> {
   return ConfigReader(config => config.set(key, value));
 }

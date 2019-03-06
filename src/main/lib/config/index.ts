@@ -1,6 +1,6 @@
 import cosmiconfig from "cosmiconfig";
 import * as Vorpal from "vorpal";
-import { ConfigFactory } from "../../util/factories/ConfigFactory";
+import { ConfigFactory } from "../../util/factories/config-factory";
 import { formatAlert, LogType } from "../../util/methods/logging";
 import { BrowserConfig } from "./../browser/config";
 import { BundleConfig } from "../bundle/config";

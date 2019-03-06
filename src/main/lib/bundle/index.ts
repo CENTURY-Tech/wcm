@@ -11,6 +11,7 @@ import { BundleConfig } from "./config";
 import { HTMLBundler } from "./bundlers/html-bundler";
 import { TSBundler } from "./bundlers/ts-bundler";
 import { Bundler } from "./bundlers/Bundler";
+import { Config } from "../../util/classes/config";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -42,8 +43,8 @@ export default function(vorpal: Vorpal) {
   });
 }
 
-function bundleProject(): ConfigReader<BundleConfig, AsyncIterableIterator<[string, string, string]>> {
-  return walkProject("internal").flatMap(iterator => ConfigReader(async function* (config) {
+function bundleProject(): ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string]>> {
+  return walkProject("internal").flatMap((iterator) => ConfigReader(async function* (config: Config<BundleConfig>) {
     const htmlBundler = new HTMLBundler();
     const tsBundler = new TSBundler();
 
@@ -80,7 +81,7 @@ function bundleProject(): ConfigReader<BundleConfig, AsyncIterableIterator<[stri
   }));
 }
 
-export function walkProject<E extends BundleConfig>(mode: "internal" | "external"): ConfigReader<E, AsyncIterableIterator<Bundler.RootName>> {
+export function walkProject(mode: "internal" | "external"): ConfigReader<BundleConfig, AsyncIterableIterator<Bundler.RootName>> {
   return ConfigReader(async function*(config) {
     const bundleSrcDir = config.get("bundleSrcDir");
     const components = config.get("components");
@@ -88,51 +89,45 @@ export function walkProject<E extends BundleConfig>(mode: "internal" | "external
     const found: string[] = [];
 
     for (const [groupRoot, entry] of flattenComponents(components)) {
-      for await (const [ref, contents, filepath] of walkSource(groupRoot, path.resolve(), entry, bundleSrcDir, found)) {
+      for await (const [ref, contents, filepath] of walkGroupRoot(groupRoot, path.resolve(), entry, bundleSrcDir, found)) {
         switch (mode) {
           case "internal":
-            yield [ref, contents, filepath]; break;
+            yield [ref, contents, filepath]; yield *walkGroupRoot(groupRoot, path.resolve(), filepath, bundleSrcDir, found); break;
           case "external":
-            yield [ref, contents, filepath]; yield *walkSource(groupRoot, path.resolve(), filepath, bundleSrcDir, found); break;
+            yield [ref, contents, filepath]; break;
         }
       }
     }
   });
 
-  async function *walkSource(groupRoot: string, projectRoot: string, srcPath: string, srcRoot: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
-    const $ = load(await util.promisify(readFile)(path.resolve(projectRoot, srcRoot, srcPath), "utf8"));
-
-    for (const elem of $('link[rel="import"]').toArray()) {
-      const href = $(elem).attr("href");
-      const lookup = path.relative(srcRoot, path.resolve(srcRoot, path.dirname(srcPath), href));
+  async function *walkGroupRoot(groupRoot: string, projectRoot: string, srcPath: string, srcRoot: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
+    for await (const [ref, contents, includePath] of walkSource(path.resolve(projectRoot, srcRoot, srcPath))) {
+      const lookup = path.relative(srcRoot, path.resolve(srcRoot, path.dirname(srcPath), includePath));
 
       if (lookup.startsWith(groupRoot) && !found.includes(lookup)) {
-        yield *walkSource(groupRoot, projectRoot, lookup, srcRoot, found.concat([lookup]));
+        found.push(lookup)
+        yield *walkGroupRoot(groupRoot, projectRoot, lookup, srcRoot, found);
       }
 
       switch (mode) {
         case "internal":
-          if (lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
+          if (lookup.startsWith(groupRoot)) yield [ref, contents, lookup]; break;
         case "external":
-          if (!lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
+          if (!lookup.startsWith(groupRoot)) yield [ref, contents, lookup]; break;
       }
     }
+  }
+}
 
-    for (const elem of $('script[src]').toArray()) {
-      const src = $(elem).attr("src");
-      const lookup = path.relative(srcRoot, path.resolve(srcRoot, path.dirname(srcPath), src));
+export async function *walkSource(filepath: string): AsyncIterableIterator<Bundler.RootName> {
+  const $ = load(await util.promisify(readFile)(filepath, "utf8"));
 
-      if (lookup.startsWith(groupRoot) && !found.includes(lookup)) {
-        yield *walkSource(groupRoot, projectRoot, lookup, srcRoot, found.concat([lookup]));
-      }
+  for (const elem of $('link[rel="import"]').toArray()) {
+    yield [$(elem), $, $(elem).attr("href")];
+  }
 
-      switch (mode) {
-        case "internal":
-          if (lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
-        case "external":
-          if (!lookup.startsWith(groupRoot)) yield [$(elem), $, lookup]; break;
-      }
-    }
+  for (const elem of $('script[src]').toArray()) {
+    yield [$(elem), $, $(elem).attr("src")];
   }
 }
 

@@ -1,4 +1,6 @@
-export interface MigrationConfig {
+import { ConfigTarget } from "../../util/classes/Config";
+
+export interface MigrationConfig extends ConfigTarget {
   depsRootDir: string;
   depsOutDir: string;
   packageFile: string;

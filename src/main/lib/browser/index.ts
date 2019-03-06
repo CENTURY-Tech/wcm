@@ -96,7 +96,7 @@ interface ProxyEndpoints {
   handler(this: ReverseProxy, event: any): void;
 }
 
-class ReverseProxy {
+export class ReverseProxy {
   public endpoints: ProxyEndpoints[] = [
     {
       matcher: (event: any) => {
@@ -130,23 +130,7 @@ class ReverseProxy {
             }
 
             return caches.open("wcm").then(cache => {
-              let development: boolean = false;
-
-              const versionedUrl = new URL(event.request.url).pathname.replace(
-                new RegExp(this.interceptSrc + "/(.+?(?=/))", "g"),
-                (_, dependencyName) => {
-                  const version = manifest[dependencyName];
-
-                  switch (version) {
-                    case "development":
-                      development = true;
-                      return [this.interceptSrc, dependencyName].join("/");
-                    default:
-                      return [this.interceptDest, dependencyName, version].join("/");
-                  }
-                }
-              );
-
+              const { development, versionedUrl } = ReverseProxy.resolveUrl(new URL(event.request.url).pathname, manifest, this)
               const request = new Request(versionedUrl.slice(1), event.request);
 
               return development
@@ -168,7 +152,11 @@ class ReverseProxy {
     }
   ];
 
-  constructor(private interceptSrc: string, private interceptDest: string, private objectStore = ReverseProxy.getOrCreateStore()) {}
+  constructor(
+    public interceptSrc: string,
+    public interceptDest: string,
+    public objectStore = ReverseProxy.getOrCreateStore()
+  ) {}
 
   public setup() {
     self.addEventListener("install", this.handleInstallEvent);
@@ -240,5 +228,29 @@ class ReverseProxy {
         objectStoreRequest = interaction(transaction.objectStore("wcm_keyval")) as IDBRequest;
       });
     }
+  }
+
+  public static resolveUrl(pathname: string, manifest: any, { interceptSrc, interceptDest }: Record<"interceptSrc" | "interceptDest", string>): { development: boolean, versionedUrl: string } {
+    let development: boolean = false;
+    let versionedUrl: string = pathname;
+
+    if (pathname.includes(interceptSrc)) {
+      const index = pathname.indexOf(interceptSrc);
+
+      if (index > -1) {
+        const [, dependencyName, ...dependencyLookup] = pathname.slice(index).split("/");
+
+        const version = manifest[dependencyName];
+
+        switch (version) {
+          case "development":
+            development = true;
+          default:
+            versionedUrl = [interceptDest, dependencyName, version, ...dependencyLookup].join("/");
+        }
+      }
+    }
+
+    return { development, versionedUrl };
   }
 }

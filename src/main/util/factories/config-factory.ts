@@ -1,12 +1,12 @@
-import { Config } from "../classes/Config";
+import { Config, ConfigTarget } from "../classes/config";
 
-export interface ConfigFactory<T> {
+export interface ConfigFactory<T extends ConfigTarget> {
   getOrCreateInstance(config?: Partial<T>): Config<T>;
-  updateInstance(newConfig?: Partial<T>): void;
+  updateInstance(config?: Partial<T>): void;
   destroyInstance(): void;
 }
 
-export function ConfigFactory<T>(defaultConfig: T): ConfigFactory<T> {
+export function ConfigFactory<T extends ConfigTarget>(defaultConfig: T): ConfigFactory<T> {
   let configInstance: Config<T> | null;
 
   return {
@@ -25,8 +25,8 @@ export function ConfigFactory<T>(defaultConfig: T): ConfigFactory<T> {
       return configInstance;
     },
 
-    updateInstance(newConfig: Partial<T> = {}): void {
-      defaultConfig = Object.assign(defaultConfig, newConfig);
+    updateInstance(config: Partial<T> = {}): void {
+      defaultConfig = Object.assign(defaultConfig, config);
       this.destroyInstance();
     },
 

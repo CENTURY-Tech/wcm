@@ -1,8 +1,14 @@
 import { Reader } from "monet";
-import { Config } from "./classes/Config";
 
-export type ConfigReader<E, A> = Reader<Config<E>, A>;
-export const ConfigReader = Reader;
+import { Config, ConfigTarget } from "./classes/config";
 
-export type AsyncConfigReader<E, A> = ConfigReader<E, Promise<A>>;
-export const AsyncConfigReader = Reader;
+export type ConfigReader<E extends ConfigTarget, A> = Reader<Config<E>, A>;
+export const ConfigReader = <E extends ConfigTarget, A>(fn: (env: Config<E>) => A) => Reader<Config<E>, A>(fn);
+
+export type CombinedConfigReader<E extends ConfigTarget[], A> = Reader<ConfigList<E>, A>;
+export const CombinedConfigReader = <E extends ConfigTarget[], A>(fn: (env: ConfigList<E>) => A) => Reader<ConfigList<E>, A>(fn);
+
+export type ConfigList<E extends ConfigTarget[]> =
+  E extends [infer E1] ? [Config<E1>] :
+  E extends [infer E1, infer E2] ? [Config<E1>, Config<E2>] :
+  E extends [infer E1, infer E2, infer E3] ? [Config<E1>, Config<E2>, Config<E3>] : never
