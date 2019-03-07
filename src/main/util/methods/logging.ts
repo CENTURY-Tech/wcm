@@ -3,22 +3,29 @@ import * as Vorpal from "vorpal";
 
 export enum LogType {
   WARN,
-  ERROR
+  ERROR,
+  FATAL
 }
 
 export function formatAlert(vorpal: Vorpal, type: LogType, format: string, ...values: any[]): string {
-  let message = "";
+  const lines = util.format(format, ...values).split("\n");
+  
+  const logger = [
+    (vorpal as any).chalk.yellow,
+    (vorpal as any).chalk.red,
+    (vorpal as any).chalk.red
+  ][type]
 
-  switch (type) {
-    case LogType.WARN:
-      message += (vorpal as any).chalk.yellow("Warning:");
-      break;
-    case LogType.WARN:
-      message += (vorpal as any).chalk.red("Error:");
-      break;
-  }
-
-  return message + "\n\n" + (vorpal as any).util.pad(util.format(format, ...values), 80);
+  return lines.reduce((msg, line) => {
+    switch (type) {
+      case LogType.WARN:
+      case LogType.ERROR:
+        return `${msg}${logger("┃  ")}${line}\n`;
+      
+      case LogType.FATAL:
+        return `${msg}${logger("┃  ")}${logger.bold(line)}\n`;
+    }
+  }, logger("╻\n")) + logger("╹");
 }
 
 /**
@@ -46,7 +53,14 @@ export function logAsyncIterator(prompt: Vorpal.CommandInstance, format: string)
 export function displayProgress(vorpal: Vorpal, format: string): (iterator: AsyncIterableIterator<any>) => Promise<void> {
   return async iterator => {
     for await (const value of iterator) {
-      vorpal.ui.redraw(util.format(format, ...value));
+      if (value.constructor === Error) {
+        vorpal.ui.redraw.clear();
+        vorpal.ui.redraw.done();
+
+        vorpal.log(formatAlert(vorpal, LogType.ERROR, value.message));
+      } else {
+        vorpal.ui.redraw(util.format(format, ...value));
+      }
     }
   };
 }

@@ -16,20 +16,30 @@ import { Bundler } from "../bundle/bundlers/Bundler";
 export default function(vorpal: Vorpal) {
   vorpal
     .command("install", "Install all dependencies of this project")
+    .option("-c ,--component <name>", "Specifiy the component to install dependencies for")
     .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
+      const bundleConfig = GlobalConfig.bundle.getOrCreateInstance().temp();
+      const browserConfig = GlobalConfig.browser.getOrCreateInstance().temp();
+
+      if (args.options.component) {
+        if (!bundleConfig.get("components")[args.options.component]) {
+          return this.log("No component configured with the name '%s'", args.options.component);
+        }
+
+        bundleConfig.set("components", {
+          [args.options.component]: bundleConfig.get("components")[args.options.component]
+        });
+      }
+      
       await installDependencies
         .map(displayProgress(vorpal, "(%s/%s) %s"))
-        .run([
-          GlobalConfig.bundle.getOrCreateInstance(),
-          GlobalConfig.browser.getOrCreateInstance(),
-          GlobalConfig.proxy.getOrCreateInstance()
-        ]);
+        .run([bundleConfig, browserConfig]);
     });
 }
 
-export const installDependencies: CombinedConfigReader<[BundleConfig, BrowserConfig, ProxyConfig], AsyncIterableIterator<[string, string, string]>> =
+export const installDependencies: CombinedConfigReader<[BundleConfig, BrowserConfig], AsyncIterableIterator<[string, string, string]>> =
   walkProject("external").local((config: any) => config[0])
-    .flatMap((iterator) => CombinedConfigReader<[BundleConfig, BrowserConfig, ProxyConfig], AsyncIterableIterator<[string, string, string]>>(async function* (config) {
+    .flatMap((iterator) => CombinedConfigReader<[BundleConfig, BrowserConfig], AsyncIterableIterator<[string, string, string]>>(async function* (config) {
       const progress = {
         completed: 0,
         pending: 0
@@ -49,10 +59,10 @@ export const installDependencies: CombinedConfigReader<[BundleConfig, BrowserCon
       yield [progress.completed, progress.pending, "Finished"];
     }));
 
-async function *processInstallFor([ref, contents, filepath]: Bundler.RootName, manifest: any, interceptSrc: string, interceptDest: string, progress: Progress, processed: string[]): AsyncIterableIterator<[number, number, string]> {
+async function *processInstallFor([ref, contents, filepath]: Bundler.RootName, manifest: any, interceptSrc: string, interceptDest: string, progress: Progress, processed: string[]): AsyncIterableIterator<[number, number, string] | Error> {
   const { versionedUrl } = ReverseProxy.resolveUrl(filepath, manifest, { interceptSrc, interceptDest });
   
-  const destFilepath = path.join("./", "web_components", versionedUrl.replace(interceptDest, ""));
+  const destFilepath = path.join("web_components", versionedUrl.replace(interceptDest, ""));
   
   if (versionedUrl.includes(interceptDest) && !processed.includes(destFilepath)) {
     processed.push(destFilepath);
@@ -63,21 +73,31 @@ async function *processInstallFor([ref, contents, filepath]: Bundler.RootName, m
 
     yield [progress.completed, progress.pending, `Downloading: ${filepath} -> ${destFilepath}`];
 
-    await download(versionedUrl, path.dirname(destFilepath)).catch((err: Error) => {
-      console.log("Error handled: ", err.message);
-    });
-
-    yield [progress.completed, progress.pending, `Downloaded: ${filepath} -> ${destFilepath}`];
+    let processingErr: Error | undefined;
 
     try {
-      for await (let [ref, contents, includePath] of walkSource(destFilepath)) {
-        yield *processInstallFor([ref, contents, path.resolve(path.dirname(filepath), includePath)], manifest, interceptSrc, interceptDest, progress, processed);
-      }
+      await download(versionedUrl, path.dirname(destFilepath))
     } catch (err) {
-      console.log("Error handled: ", err.message);
+      processingErr = Error(`Error whilst downloading: ${filepath} -> ${destFilepath}\n✕ ${err.message}`);
+    };
+
+    if (!processingErr) {
+      yield [progress.completed, progress.pending, `Downloaded: ${filepath} -> ${destFilepath}`];
+
+      try {
+        for await (let [ref, contents, includePath] of walkSource(destFilepath, false)) {
+          yield *processInstallFor([ref, contents, path.resolve(path.dirname(filepath), includePath)], manifest, interceptSrc, interceptDest, progress, processed);
+        }
+      } catch (err) {
+        processingErr = Error(`Error whilst walking: ${destFilepath}\n✕ ${err.message}`);
+      }
     }
   
-    yield [++progress.completed, progress.pending, `Completed: ${filepath}`]
+    if (!processingErr) {
+      yield [++progress.completed, progress.pending, `Completed: ${filepath}`];
+    } else {
+      yield processingErr;
+    }
   }
 }
 

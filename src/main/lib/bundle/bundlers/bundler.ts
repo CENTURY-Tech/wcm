@@ -11,5 +11,5 @@ export abstract class Bundler {
 }
 
 export namespace Bundler {
-  export type RootName = [Cheerio, CheerioStatic, string];
+  export type RootName = [Cheerio | null, CheerioStatic, string];
 }

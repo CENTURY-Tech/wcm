@@ -66,7 +66,7 @@ export class TSBundler extends Bundler {
     }
 
     for (const [ref, contents, filename] of this.rootNames) {
-      ref.attr("src", replaceExt(ref.attr("src"), ".js"));
+      ref && ref.attr("src", replaceExt(ref.attr("src"), ".js"));
       yield [ref, contents, filename];
     }
   }

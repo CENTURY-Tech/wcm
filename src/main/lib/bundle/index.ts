@@ -36,15 +36,30 @@ export default function(vorpal: Vorpal) {
       return setConfig<BundleConfig>(args.key, args.value).run(GlobalConfig.bundle.getOrCreateInstance());
     });
 
-  vorpal.command("bundle", "Bundle your project").action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
-    await bundleProject()
-      .map(displayProgress(vorpal, "(%s/%s) %s"))
-      .run(GlobalConfig.bundle.getOrCreateInstance());
-  });
+  vorpal
+    .command("bundle", "Bundle your project")
+    .option("-c ,--component <name>", "Specifiy the component to bundle")
+    .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
+      const bundleConfig = GlobalConfig.bundle.getOrCreateInstance().temp();
+
+      if (args.options.component) {
+        if (!bundleConfig.get("components")[args.options.component]) {
+          return this.log("No component configured with the name '%s'", args.options.component);
+        }
+
+        bundleConfig.set("components", {
+          [args.options.component]: bundleConfig.get("components")[args.options.component]
+        });
+      }
+      
+      await bundleProject
+        .map(displayProgress(vorpal, "(%s/%s) %s"))
+        .run(bundleConfig);
+    });
 }
 
-function bundleProject(): ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string]>> {
-  return walkProject("internal").flatMap((iterator) => ConfigReader(async function* (config: Config<BundleConfig>) {
+const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string]>> =
+  walkProject("internal").flatMap((iterator) => ConfigReader(async function* (config) {
     const htmlBundler = new HTMLBundler();
     const tsBundler = new TSBundler();
 
@@ -79,9 +94,8 @@ function bundleProject(): ConfigReader<BundleConfig, AsyncIterableIterator<[numb
 
     yield [completed, pending, "Finished"];
   }));
-}
 
-export function walkProject(mode: "internal" | "external"): ConfigReader<BundleConfig, AsyncIterableIterator<Bundler.RootName>> {
+export function walkProject(mode: "internal" | "external" | "*"): ConfigReader<BundleConfig, AsyncIterableIterator<Bundler.RootName>> {
   return ConfigReader(async function*(config) {
     const bundleSrcDir = config.get("bundleSrcDir");
     const components = config.get("components");
@@ -89,38 +103,43 @@ export function walkProject(mode: "internal" | "external"): ConfigReader<BundleC
     const found: string[] = [];
 
     for (const [groupRoot, entry] of flattenComponents(components)) {
-      for await (const [ref, contents, filepath] of walkGroupRoot(groupRoot, path.resolve(), entry, bundleSrcDir, found)) {
-        switch (mode) {
-          case "internal":
-            yield [ref, contents, filepath]; yield *walkGroupRoot(groupRoot, path.resolve(), filepath, bundleSrcDir, found); break;
-          case "external":
-            yield [ref, contents, filepath]; break;
-        }
-      }
+      yield *walkGroupRoot(groupRoot, entry, path.resolve(bundleSrcDir), found)
     }
   });
 
-  async function *walkGroupRoot(groupRoot: string, projectRoot: string, srcPath: string, srcRoot: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
-    for await (const [ref, contents, includePath] of walkSource(path.resolve(projectRoot, srcRoot, srcPath))) {
-      const lookup = path.relative(srcRoot, path.resolve(srcRoot, path.dirname(srcPath), includePath));
+  async function *walkGroupRoot(groupRoot: string, srcPath: string, srcRoot: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
+    for await (const [ref, contents, includePath] of walkSource(path.resolve(srcRoot, srcPath))) {
+      const absoluteLookup = path.resolve(srcRoot, path.dirname(srcPath), includePath);
+      const relativeLookup = path.relative(srcRoot, absoluteLookup);
 
-      if (lookup.startsWith(groupRoot) && !found.includes(lookup)) {
-        found.push(lookup)
-        yield *walkGroupRoot(groupRoot, projectRoot, lookup, srcRoot, found);
+      if (!found.includes(absoluteLookup)) {
+        found.push(includePath);
+      } else {
+        continue;
+      }
+
+      if (absoluteLookup.startsWith(srcRoot)) {
+        yield *walkGroupRoot(groupRoot, relativeLookup, srcRoot, found);
       }
 
       switch (mode) {
+        case "*":
+          yield [ref, contents, relativeLookup]; break;
         case "internal":
-          if (lookup.startsWith(groupRoot)) yield [ref, contents, lookup]; break;
+          if (absoluteLookup.startsWith(srcRoot)) yield [ref, contents, relativeLookup]; break;
         case "external":
-          if (!lookup.startsWith(groupRoot)) yield [ref, contents, lookup]; break;
+          if (!absoluteLookup.startsWith(srcRoot)) yield [ref, contents, relativeLookup]; break;
       }
     }
   }
 }
 
-export async function *walkSource(filepath: string): AsyncIterableIterator<Bundler.RootName> {
+export async function *walkSource(filepath: string, yieldSelf: boolean = true): AsyncIterableIterator<Bundler.RootName> {
   const $ = load(await util.promisify(readFile)(filepath, "utf8"));
+
+  if (yieldSelf) {
+    yield [null, $, filepath];
+  }
 
   for (const elem of $('link[rel="import"]').toArray()) {
     yield [$(elem), $, $(elem).attr("href")];

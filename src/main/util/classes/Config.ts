@@ -27,4 +27,8 @@ export class Config<T extends ConfigTarget> {
   public set<K extends keyof T>(key: K, value: T[K]): void {
     this.config[key] = value;
   }
+
+  public temp(): Config<T> {
+    return new Config(JSON.parse(JSON.stringify(this.config)));
+  }
 }

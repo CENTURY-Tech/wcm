@@ -2,6 +2,7 @@ import { Config, ConfigTarget } from "../classes/config";
 
 export interface ConfigFactory<T extends ConfigTarget> {
   getOrCreateInstance(config?: Partial<T>): Config<T>;
+  
   updateInstance(config?: Partial<T>): void;
   destroyInstance(): void;
 }
