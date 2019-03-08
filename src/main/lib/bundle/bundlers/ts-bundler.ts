@@ -15,7 +15,7 @@ export class TSBundler extends Bundler {
   }
 
   public *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>) {
-    const program = ts.createProgram(this.rootNames.map(([,, _]) => path.resolve(bundleSrcDir, _)), {
+    const program = ts.createProgram(this.rootNames.map(([, _]) => path.resolve(bundleSrcDir, _)), {
       ...this.compilerOptions,
 
       rootDir: bundleSrcDir,
@@ -65,9 +65,9 @@ export class TSBundler extends Bundler {
       diagnostics.forEach(TSBundler.reportDiagnostic);
     }
 
-    for (const [ref, contents, filename] of this.rootNames) {
+    for (const [ref, filename] of this.rootNames) {
       ref && ref.attr("src", replaceExt(ref.attr("src"), ".js"));
-      yield [ref, contents, filename];
+      yield [ref, filename];
     }
   }
 

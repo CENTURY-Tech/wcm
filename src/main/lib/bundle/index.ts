@@ -11,7 +11,7 @@ import { BundleConfig } from "./config";
 import { HTMLBundler } from "./bundlers/html-bundler";
 import { TSBundler } from "./bundlers/ts-bundler";
 import { Bundler } from "./bundlers/Bundler";
-import { Config } from "../../util/classes/config";
+import { MemoizeProcedure } from "../../util/decorators/memoize-procedure";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -69,14 +69,14 @@ const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, n
     let completed = 0;
     let pending = 0;
 
-    for await (const [ref, contents, filepath] of iterator) {
+    for await (const [ref, filepath] of iterator) {
       yield [completed, ++pending, "Walking project"]
 
       switch (path.extname(filepath)) {
         case ".ts":
-          tsBundler.addRootName([ref, contents, filepath]); break;
+          tsBundler.addRootName([ref, filepath]); break;
         case ".html":
-          htmlBundler.addRootName([ref, contents, filepath]); break;
+          htmlBundler.addRootName([ref, filepath]); break;
         default:
           throw Error(`Unhandled file extension: "${path.extname(filepath)}"`);
       }
@@ -103,50 +103,40 @@ export function walkProject(mode: "internal" | "external" | "*"): ConfigReader<B
     const found: string[] = [];
 
     for (const [groupRoot, entry] of flattenComponents(components)) {
-      yield *walkGroupRoot(groupRoot, entry, path.resolve(bundleSrcDir), found)
+      const srcRoot = path.resolve(bundleSrcDir);
+      const srcPath = path.resolve(srcRoot, entry);
+
+      yield *yieldRootName([null, srcPath], srcRoot);
+
+      yield *walkGroupRoot(groupRoot, srcRoot, srcPath, found);
     }
   });
 
-  async function *walkGroupRoot(groupRoot: string, srcPath: string, srcRoot: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
-    for await (const [ref, contents, includePath] of walkSource(path.resolve(srcRoot, srcPath))) {
-      const absoluteLookup = path.resolve(srcRoot, path.dirname(srcPath), includePath);
-      const relativeLookup = path.relative(srcRoot, absoluteLookup);
+  function *yieldRootName([ref, includePath]: Bundler.RootName, srcRoot: string): IterableIterator<Bundler.RootName> {
+    switch (mode) {
+      case "*":
+        yield [ref, includePath]; break;
+      case "internal":
+        if (includePath.startsWith(srcRoot)) yield [ref, includePath]; break;
+      case "external":
+        if (!includePath.startsWith(srcRoot)) yield [ref, includePath]; break;
+    }
+  }
 
-      if (!found.includes(absoluteLookup)) {
+  async function *walkGroupRoot(groupRoot: string, srcRoot: string, srcPath: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
+    for await (const [ref, includePath] of Bundler.walkSource(srcPath)) {
+      if (!found.includes(includePath)) {
         found.push(includePath);
       } else {
         continue;
       }
 
-      if (absoluteLookup.startsWith(srcRoot)) {
-        yield *walkGroupRoot(groupRoot, relativeLookup, srcRoot, found);
+      if (includePath.startsWith(srcRoot) && includePath.endsWith(".html")) {
+        yield *walkGroupRoot(groupRoot, srcRoot, path.resolve(srcRoot, includePath), found);
       }
 
-      switch (mode) {
-        case "*":
-          yield [ref, contents, relativeLookup]; break;
-        case "internal":
-          if (absoluteLookup.startsWith(srcRoot)) yield [ref, contents, relativeLookup]; break;
-        case "external":
-          if (!absoluteLookup.startsWith(srcRoot)) yield [ref, contents, relativeLookup]; break;
-      }
+      yield *yieldRootName([ref, includePath], srcRoot);
     }
-  }
-}
-
-export async function *walkSource(filepath: string, yieldSelf: boolean = true): AsyncIterableIterator<Bundler.RootName> {
-  const $ = load(await util.promisify(readFile)(filepath, "utf8"));
-
-  if (yieldSelf) {
-    yield [null, $, filepath];
-  }
-
-  for (const elem of $('link[rel="import"]').toArray()) {
-    yield [$(elem), $, $(elem).attr("href")];
-  }
-
-  for (const elem of $('script[src]').toArray()) {
-    yield [$(elem), $, $(elem).attr("src")];
   }
 }
 

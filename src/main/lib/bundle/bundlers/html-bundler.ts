@@ -5,9 +5,11 @@ import { stat, mkdir, writeFile } from "fs";
 import { Bundler } from "./Bundler";
 
 export class HTMLBundler extends Bundler {
-  public async *execCompilation({ bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.RootName> {
-    for (const [ref, contents, filename] of this.rootNames) {
-      const outPath = path.resolve(bundleOutDir, filename);
+  public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.RootName> {
+    for (const [ref, filepath] of this.rootNames) {
+      const outPath = path.resolve(bundleOutDir, path.relative(bundleSrcDir, filepath));
+
+      const contents = await Bundler.readSource(filepath);
 
       try {
         await util.promisify(stat)(path.dirname(outPath));
@@ -18,7 +20,7 @@ export class HTMLBundler extends Bundler {
       }
 
       await util.promisify(writeFile)(outPath, contents("head").html() as string + contents("body").html() as string, "utf8");
-      yield [ref, contents, filename];
+      yield [ref, filepath];
     }
   }
 }
