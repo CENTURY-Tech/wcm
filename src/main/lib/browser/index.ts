@@ -131,7 +131,7 @@ export class ReverseProxy {
 
             return caches.open("wcm").then(cache => {
               const { development, versionedUrl } = ReverseProxy.resolveUrl(new URL(event.request.url).pathname, manifest, this)
-              const request = new Request(versionedUrl.slice(1), event.request);
+              const request = new Request(versionedUrl, event.request);
 
               return development
                 ? fetch(request.url)
