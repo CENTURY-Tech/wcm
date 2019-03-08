@@ -1,13 +1,15 @@
-const map = new WeakMap();
 
-export function MemoizeProcedure(target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<() => any>) {
-  const fn: any = descriptor.value;
+export function MemoizeProcedure(target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => any>) {
+  const map = new Map();
+  const fn = descriptor.value as any;
 
   descriptor.value = function() {
-    if (!map.has(this)) {
-      map.set(this, fn.apply(this, arguments));
+    const key = Array.from(arguments).toString();
+    
+    if (!map.has(key)) {
+      map.set(key, fn.apply(this, arguments));
     }
 
-    return map.get(this);
+    return map.get(key);
   };
 }
