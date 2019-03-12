@@ -9,8 +9,6 @@ export class HTMLBundler extends Bundler {
     for (const [ref, filepath] of this.rootNames) {
       const outPath = path.resolve(bundleOutDir, path.relative(bundleSrcDir, filepath));
 
-      const contents = await Bundler.readSource(filepath);
-
       try {
         await util.promisify(stat)(path.dirname(outPath));
       } catch (err) {
@@ -19,7 +17,7 @@ export class HTMLBundler extends Bundler {
         }
       }
 
-      await util.promisify(writeFile)(outPath, contents("head").html() as string + contents("body").html() as string, "utf8");
+      await util.promisify(writeFile)(outPath, await Bundler.extractContentsFromSource(filepath), "utf8");
       yield [ref, filepath];
     }
   }

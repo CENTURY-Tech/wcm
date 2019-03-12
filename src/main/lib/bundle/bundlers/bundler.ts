@@ -40,6 +40,15 @@ export abstract class Bundler {
     
     return load(await util.promisify(readFile)(filepath, "utf8"))
   }
+
+  @MemoizeProcedure
+  static async extractContentsFromSource(filepath: string): Promise<string> {
+    return Bundler.extractContentsFromStatic(await Bundler.readSource(filepath));
+  }
+
+  static async extractContentsFromStatic($: CheerioStatic): Promise<string> {
+    return $("head").html() as string + $("body").html() as string;
+  }
 }
 
 export namespace Bundler {

@@ -52,44 +52,54 @@ export const installDependencies: CombinedConfigReader<[BundleConfig, BrowserCon
       const processed: string[] = [];
 
       for await (const [, includePath] of iterator) {
-        yield *processInstallFor(includePath, manifest, interceptSrc, interceptDest, progress, processed);
+        yield *processInstallFor("default", includePath, manifest, interceptSrc, interceptDest, progress, processed);
       }
 
       yield [progress.completed, progress.pending, "Finished"];
     }));
 
-async function *processInstallFor(filepath: string, manifest: any, interceptSrc: string, interceptDest: string, progress: Progress, processed: string[]): AsyncIterableIterator<[number, number, string] | Error> {
+async function *processInstallFor(mode: "default" | "proxy", filepath: string, manifest: any, interceptSrc: string, interceptDest: string, progress: Progress, processed: string[]): AsyncIterableIterator<[number, number, string] | Error> {
   const { versionedUrl } = ReverseProxy.resolveUrl(filepath, manifest, { interceptSrc, interceptDest });
   
-  const destFilepath = path.resolve(path.join("web_components", versionedUrl.replace(interceptDest, "")));
+  let destFilepath: string;
+  
+  switch (mode) {
+    case "default":
+      destFilepath = path.resolve(path.join(".", filepath)); break;
+    case "proxy":
+      destFilepath = path.resolve(path.join("web_components", versionedUrl.replace(interceptDest, ""))); break;
+    default:
+      throw Error(`Unknown installation mode: "${mode}"`);
+  }
+
 
   if (versionedUrl.includes(interceptDest) && !processed.includes(destFilepath)) {
     processed.push(destFilepath);
 
     yield [progress.completed, ++progress.pending, `Import processing: ${filepath}`];
 
-    await ensureDirectoryFor(`${interceptSrc}/${versionedUrl.replace(interceptDest, "")}`);
+    await ensureDirectoryFor(destFilepath);
 
-    yield [progress.completed, progress.pending, `Downloading: ${filepath} -> ${destFilepath}`];
+    yield [progress.completed, progress.pending, `Downloading: ${versionedUrl} -> ${destFilepath}`];
 
     let processingErr: Error | undefined;
 
     try {
       await download(versionedUrl, path.dirname(destFilepath));
     } catch (err) {
-      processingErr = Error(`Error whilst downloading: ${filepath} -> ${destFilepath}\n✕ ${err.message}`);
+      processingErr = Error(`Error whilst downloading: ${versionedUrl} -> ${destFilepath}\n✕ ${err.message}`);
     };
 
     if (!processingErr) {
-      yield [progress.completed, progress.pending, `Downloaded: ${filepath} -> ${destFilepath}`];
+      yield [progress.completed, progress.pending, `Downloaded: ${versionedUrl} -> ${destFilepath}`];
       
       if (destFilepath.endsWith(".html")) {
-        yield [progress.completed, progress.pending, `Walking source for: ${filepath} -> ${destFilepath}`];
+        yield [progress.completed, progress.pending, `Walking source for: ${versionedUrl} -> ${destFilepath}`];
 
         try {
           for await (let [, includePath] of Bundler.walkSource(destFilepath)) {
             includePath = path.join(path.dirname(filepath), path.relative(path.dirname(destFilepath), includePath));
-            yield *processInstallFor(includePath, manifest, interceptSrc, interceptDest, progress, processed);
+            yield *processInstallFor(mode, includePath, manifest, interceptSrc, interceptDest, progress, processed);
           }
 
           yield [progress.completed, progress.pending, `Walking complete  for: ${filepath} -> ${destFilepath}`];

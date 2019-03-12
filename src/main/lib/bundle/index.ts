@@ -1,8 +1,5 @@
 import * as path from "path";
-import * as util from "util";
 import * as Vorpal from "vorpal";
-import { readFile } from "fs";
-import { load } from "cheerio";
 import { ConfigReader } from "../../util";
 import { listConfig, getConfig, setConfig } from "../../util/methods/config";
 import { logIterator, displayProgress } from "../../util/methods/logging";
@@ -11,7 +8,6 @@ import { BundleConfig } from "./config";
 import { HTMLBundler } from "./bundlers/html-bundler";
 import { TSBundler } from "./bundlers/ts-bundler";
 import { Bundler } from "./bundlers/Bundler";
-import { MemoizeProcedure } from "../../util/decorators/memoize-procedure";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -58,19 +54,16 @@ export default function(vorpal: Vorpal) {
     });
 }
 
-const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string]>> =
+export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string]>> =
   walkProject("internal").flatMap((iterator) => ConfigReader(async function* (config) {
     const htmlBundler = new HTMLBundler();
     const tsBundler = new TSBundler();
-
-    const bundleSrcDir = config.get("bundleSrcDir");
-    const bundleOutDir = config.get("bundleOutDir");
 
     let completed = 0;
     let pending = 0;
 
     for await (const [ref, filepath] of iterator) {
-      yield [completed, ++pending, "Walking project"]
+      yield [completed, ++pending, "Walking project"];
 
       switch (path.extname(filepath)) {
         case ".ts":
@@ -81,6 +74,9 @@ const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, n
           throw Error(`Unhandled file extension: "${path.extname(filepath)}"`);
       }
     }
+
+    const bundleSrcDir = config.get("bundleSrcDir");
+    const bundleOutDir = config.get("bundleOutDir");
 
     yield [completed, pending, "Processing TS"];
     for await (const [] of tsBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
@@ -107,7 +103,6 @@ export function walkProject(mode: "internal" | "external" | "*"): ConfigReader<B
       const srcPath = path.resolve(srcRoot, entry);
 
       yield *yieldRootName([null, srcPath], srcRoot);
-
       yield *walkGroupRoot(groupRoot, srcRoot, srcPath, found);
     }
   });

@@ -3,12 +3,14 @@
 import { cli } from "./wcm";
 import { formatAlert, LogType } from "./util/methods/logging";
 
-(cli as any).on("client_command_error", () => {
+(cli as any).on("client_command_error", (err: Error): never => {
+  err.stack && cli.log(err.stack);
+
   cli.log(formatAlert(cli, LogType.FATAL, ""
     + "How embarassing, this was unexpected... Please report this error!"
   ));
 
-  process.exit(1);
+  return process.exit(1);
 })
 
 if (!module.parent) {
