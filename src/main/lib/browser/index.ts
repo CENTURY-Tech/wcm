@@ -5,6 +5,13 @@ import { transform } from "babel-core";
 import { ConfigReader } from "../../util";
 import { BrowserConfig } from "./config";
 
+export interface Manifest {
+  version: string;
+  dependencies: ManifestDependencies
+}
+
+export type ManifestDependencies = Record<string, string>
+
 export default function(vorpal: Vorpal) {
   vorpal
     .command("browser init", "Prepare the Service Worker impl/reg files")
@@ -104,7 +111,7 @@ export class ReverseProxy {
       },
       handler: (event: any) => {
         event.respondWith(
-          event.request.json().then((manifest: any) => {
+          event.request.json().then((manifest: Manifest) => {
             return this.setManifest(manifest).then(() => new Response());
           })
         );
@@ -124,13 +131,13 @@ export class ReverseProxy {
       },
       handler: function(event: any) {
         event.respondWith(
-          this.getManifest().then((manifest: any) => {
+          this.getManifest().then((manifest: Manifest) => {
             if (!manifest) {
               return fetch(event.request);
             }
 
             return caches.open("wcm").then(cache => {
-              const { development, versionedUrl } = ReverseProxy.resolveUrl(new URL(event.request.url).pathname, manifest, this)
+              const { development, versionedUrl } = ReverseProxy.resolveUrl(new URL(event.request.url).pathname, manifest.dependencies, this)
               const request = new Request(versionedUrl, event.request);
 
               return development
@@ -170,13 +177,13 @@ export class ReverseProxy {
     self.removeEventListener("fetch", this.handleFetchEvent);
   }
 
-  public getManifest(): Promise<object> {
+  public getManifest(): Promise<Manifest> {
     return this.objectStore.then(store => {
-      return store.get("manifest");
+      return store.get<Manifest>("manifest");
     });
   }
 
-  public setManifest(manifest: object): Promise<void> {
+  public setManifest(manifest: Manifest): Promise<void> {
     return this.objectStore.then(store => {
       return store.set("manifest", manifest);
     });
@@ -230,7 +237,7 @@ export class ReverseProxy {
     }
   }
 
-  public static resolveUrl(pathname: string, manifest: any, { interceptSrc, interceptDest }: Record<"interceptSrc" | "interceptDest", string>): { development: boolean, versionedUrl: string } {
+  public static resolveUrl(pathname: string, dependencies: ManifestDependencies, { interceptSrc, interceptDest }: Record<"interceptSrc" | "interceptDest", string>): { development: boolean, versionedUrl: string } {
     let development: boolean = false;
     let versionedUrl: string = pathname;
 
@@ -240,7 +247,7 @@ export class ReverseProxy {
       if (index > -1) {
         const [, dependencyName, ...dependencyLookup] = pathname.slice(index).split("/");
 
-        const version = manifest[dependencyName];
+        const version = dependencies[dependencyName];
 
         switch (version) {
           case "development":

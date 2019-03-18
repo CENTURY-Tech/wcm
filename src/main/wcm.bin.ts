@@ -22,6 +22,12 @@ if (!module.parent) {
 
     cli.parse(process.argv);
   } else {
+    cli.log(formatAlert(cli, LogType.INFO, ""
+      + "Web Components Manager\n"
+      + "\n"
+      + "Version: " + require(__dirname + "/../package.json").version
+    ));
+
     cli.delimiter("wcm>").show();
   }
 }

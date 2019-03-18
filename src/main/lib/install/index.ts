@@ -9,7 +9,7 @@ import { GlobalConfig } from "../config";
 import { BrowserConfig } from "../browser/config";
 import { BundleConfig } from "../bundle/config";
 import { walkProject } from "../bundle";
-import { ReverseProxy } from "../browser";
+import { ReverseProxy, Manifest } from "../browser";
 import { Bundler } from "../bundle/bundlers/Bundler";
 
 export default function(vorpal: Vorpal) {
@@ -44,7 +44,7 @@ export const installDependencies: CombinedConfigReader<[BundleConfig, BrowserCon
         pending: 0
       }
 
-      const manifest = require(require.resolve("manifest.json", { paths: [process.cwd()] }));
+      const manifest = require(require.resolve("manifest.json", { paths: [process.cwd()] })) as Manifest;
 
       const interceptSrc = config[1].get("interceptSrc");
       const interceptDest = config[1].get("interceptDest");
@@ -58,8 +58,8 @@ export const installDependencies: CombinedConfigReader<[BundleConfig, BrowserCon
       yield [progress.completed, progress.pending, "Finished"];
     }));
 
-async function *processInstallFor(mode: "default" | "proxy", filepath: string, manifest: any, interceptSrc: string, interceptDest: string, progress: Progress, processed: string[]): AsyncIterableIterator<[number, number, string] | Error> {
-  const { versionedUrl } = ReverseProxy.resolveUrl(filepath, manifest, { interceptSrc, interceptDest });
+async function *processInstallFor(mode: "default" | "proxy", filepath: string, manifest: Manifest, interceptSrc: string, interceptDest: string, progress: Progress, processed: string[]): AsyncIterableIterator<[number, number, string] | Error> {
+  const { versionedUrl } = ReverseProxy.resolveUrl(filepath, manifest.dependencies, { interceptSrc, interceptDest });
   
   let destFilepath: string;
   

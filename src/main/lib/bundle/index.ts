@@ -34,7 +34,7 @@ export default function(vorpal: Vorpal) {
 
   vorpal
     .command("bundle", "Bundle your project")
-    .option("-c ,--component <name>", "Specifiy the component to bundle")
+    .option("-c, --component <name>", "Specifiy the component to bundle")
     .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
       const bundleConfig = GlobalConfig.bundle.getOrCreateInstance().temp();
 
