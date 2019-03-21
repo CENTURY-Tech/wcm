@@ -6,7 +6,6 @@ import install from "./lib/install";
 import migration from "./lib/migration";
 import pack from "./lib/pack";
 import proxy from "./lib/proxy";
-import version from "./lib/version";
 
 export const cli = (new vorpal)
   .history(".wcm_history")
@@ -16,5 +15,5 @@ export const cli = (new vorpal)
   .use(install)
   .use(migration)
   .use(pack)
-  .use(proxy)
-  .use(version);
+  .use(proxy);
+  

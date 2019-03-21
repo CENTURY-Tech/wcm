@@ -6,7 +6,6 @@ import { BrowserConfig } from "./../browser/config";
 import { BundleConfig } from "../bundle/config";
 import { MigrationConfig } from "./../migration/config";
 import { ProxyConfig } from "./../proxy/config";
-import { VersionConfig } from "../version/config";
 
 require("cosmiconfig").default = require("cosmiconfig");
 
@@ -14,8 +13,7 @@ export const GlobalConfig = {
   browser: ConfigFactory(BrowserConfig),
   bundle: ConfigFactory(BundleConfig),
   migration: ConfigFactory(MigrationConfig),
-  proxy: ConfigFactory(ProxyConfig),
-  version: ConfigFactory(VersionConfig)
+  proxy: ConfigFactory(ProxyConfig)
 };
 
 export default async function(vorpal: Vorpal) {

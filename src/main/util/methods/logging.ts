@@ -2,29 +2,28 @@ import * as util from "util";
 import * as Vorpal from "vorpal";
 
 export enum LogType {
-  INFO,
   WARN,
   ERROR,
   FATAL
 }
 
 export function formatAlert(vorpal: Vorpal, type: LogType, format: string, ...values: any[]): string {
-  const msg = util.format(format, ...values);
+  const lines = util.format(format, ...values).split("\n");
   
   const logger = [
-    (vorpal as any).chalk.blue,
     (vorpal as any).chalk.yellow,
     (vorpal as any).chalk.red,
     (vorpal as any).chalk.red
   ][type]
 
-  return msg.split("\n").reduce((msg, line) => {
+  return lines.reduce((msg, line) => {
     switch (type) {
+      case LogType.WARN:
+      case LogType.ERROR:
+        return `${msg}${logger("┃  ")}${line}\n`;
+      
       case LogType.FATAL:
         return `${msg}${logger("┃  ")}${logger.bold(line)}\n`;
-
-      default:
-        return `${msg}${logger("┃  ")}${line}\n`;
     }
   }, logger("╻\n")) + logger("╹");
 }
