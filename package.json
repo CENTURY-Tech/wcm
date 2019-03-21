@@ -1,6 +1,6 @@
 {
   "name": "wcm",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Web Components Manager, a tool to version web components",
   "bin": "dist/wcm.bin.js",
   "main": "dist/wcm.js",
