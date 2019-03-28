@@ -9,6 +9,10 @@ export interface ConfigTarget {
 export class Config<T extends ConfigTarget> {
   constructor(private config: T, public assignableKeys: Array<keyof T> = Object.keys(config) as (keyof T)[]) {}
 
+  public raw(): T {
+    return JSON.parse(JSON.stringify(this.config))
+  }
+
   /**
    * Retrieve the value assigned to the key provided.
    *
@@ -29,6 +33,6 @@ export class Config<T extends ConfigTarget> {
   }
 
   public temp(): Config<T> {
-    return new Config(JSON.parse(JSON.stringify(this.config)));
+    return new Config(this.raw());
   }
 }

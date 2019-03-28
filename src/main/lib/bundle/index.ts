@@ -1,5 +1,7 @@
 import * as path from "path";
+import * as util from "util";
 import * as Vorpal from "vorpal";
+import { readFile, writeFile } from "fs";
 import { ConfigReader } from "../../util";
 import { listConfig, getConfig, setConfig } from "../../util/methods/config";
 import { logIterator, displayProgress } from "../../util/methods/logging";
@@ -35,6 +37,7 @@ export default function(vorpal: Vorpal) {
   vorpal
     .command("bundle", "Bundle your project")
     .option("-c ,--component <name>", "Specifiy the component to bundle")
+    .option("-m ,--minify", "Minify the output")
     .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
       const bundleConfig = GlobalConfig.bundle.getOrCreateInstance().temp();
 
@@ -47,7 +50,11 @@ export default function(vorpal: Vorpal) {
           [args.options.component]: bundleConfig.get("components")[args.options.component]
         });
       }
-      
+
+      if (args.options.minify) {
+        bundleConfig.set("minify", true);
+      }
+
       await bundleProject
         .map(displayProgress(vorpal, "(%s/%s) %s"))
         .run(bundleConfig);
@@ -75,16 +82,19 @@ export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[nu
       }
     }
 
-    const bundleSrcDir = config.get("bundleSrcDir");
-    const bundleOutDir = config.get("bundleOutDir");
+    const rawConfig = config.raw();
+    const bundleSrcDir = path.resolve(rawConfig.bundleSrcDir);
+    const bundleOutDir = path.resolve(rawConfig.bundleOutDir);
 
     yield [completed, pending, "Processing TS"];
-    for await (const [] of tsBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
+    for await (const processedRootName of tsBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
+      await Bundler.finalize(processedRootName, rawConfig);
       yield [++completed, pending, "Processing TS"];
     }
 
     yield [completed, pending, "Processing HTML"];
-    for await (const [] of htmlBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
+    for await (const processedRootName of htmlBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
+      await Bundler.finalize(processedRootName, rawConfig);
       yield [++completed, pending, "Processing HTML"];
     }
 

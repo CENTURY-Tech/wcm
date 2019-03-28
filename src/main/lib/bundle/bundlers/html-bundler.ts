@@ -5,7 +5,7 @@ import { stat, mkdir, writeFile } from "fs";
 import { Bundler } from "./Bundler";
 
 export class HTMLBundler extends Bundler {
-  public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.RootName> {
+  public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName> {
     for (const [ref, filepath] of this.rootNames) {
       const outPath = path.resolve(bundleOutDir, path.relative(bundleSrcDir, filepath));
 
@@ -17,8 +17,7 @@ export class HTMLBundler extends Bundler {
         }
       }
 
-      await util.promisify(writeFile)(outPath, await Bundler.extractContentsFromSource(filepath), "utf8");
-      yield [ref, filepath];
+      yield [[ref, outPath], await Bundler.extractContentsFromSource(filepath)];
     }
   }
 }

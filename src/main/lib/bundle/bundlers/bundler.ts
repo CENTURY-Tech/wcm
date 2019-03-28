@@ -1,8 +1,14 @@
 import * as path from "path";
 import * as util from "util";
-import { readFile } from "fs"
+import { readFile, writeFile } from "fs"
 import { load } from "cheerio";
 import { MemoizeProcedure } from "../../../util/decorators/memoize-procedure";
+import { BundleConfig } from "../config";
+
+const minify: any = require("minify");
+
+const readFileAsync = util.promisify(readFile);
+const writeFileAsync = util.promisify(writeFile);
 
 export abstract class Bundler {
   constructor(
@@ -13,7 +19,15 @@ export abstract class Bundler {
     this.rootNames.push(rootName);
   }
 
-  public abstract execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.RootName>
+  public abstract execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName>
+
+  static async finalize([[, filepath], contents]: Bundler.ProcessedRootName, config: BundleConfig): Promise<void> {
+    if (config.minify) {
+      contents = minify[path.extname(filepath).slice(1)](contents);
+    }
+
+    return Bundler.writeFile(filepath, contents);
+  }
 
   @MemoizeProcedure
   static async *walkSource(filepath: string): AsyncIterableIterator<Bundler.RootName> {
@@ -30,15 +44,28 @@ export abstract class Bundler {
 
   @MemoizeProcedure
   static async readSource(filepath: string): Promise<CheerioStatic> {
-    if (!path.isAbsolute(filepath)) {
-      throw Error(`Filepath is not absolute: ${filepath}`);
-    }
-
     if (!filepath.endsWith(".html")) {
       throw Error(`File extension is not .html: ${filepath}`);
     }
     
-    return load(await util.promisify(readFile)(filepath, "utf8"))
+    return load(await Bundler.readFile(filepath))
+  }
+
+  @MemoizeProcedure
+  static readFile(filepath: string): Promise<string> {
+    if (!path.isAbsolute(filepath)) {
+      throw Error(`Filepath is not absolute: ${filepath}`);
+    }
+
+    return readFileAsync(filepath, "utf8")
+  }
+
+  static writeFile(filepath: string, contents: string): Promise<void> {
+    if (!path.isAbsolute(filepath)) {
+      throw Error(`Filepath is not absolute: ${filepath}`);
+    }
+
+    return writeFileAsync(filepath, contents, "utf8")
   }
 
   @MemoizeProcedure
@@ -53,4 +80,5 @@ export abstract class Bundler {
 
 export namespace Bundler {
   export type RootName = [Cheerio | null, string];
+  export type ProcessedRootName = [RootName, string];
 }

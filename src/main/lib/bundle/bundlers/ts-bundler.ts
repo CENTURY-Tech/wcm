@@ -1,5 +1,7 @@
 import * as path from "path";
+import * as util from "util";
 import { CompilerOptions, ModuleKind, ScriptTarget } from "typescript";
+import { readFile, writeFile } from "fs";
 
 import { Bundler } from "./Bundler";
 
@@ -14,8 +16,8 @@ export class TSBundler extends Bundler {
     super(rootNames);
   }
 
-  public *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>) {
-    const program = ts.createProgram(this.rootNames.map(([, _]) => path.resolve(bundleSrcDir, _)), {
+  public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName> {
+    const program = ts.createProgram(this.rootNames.map(([, _]) => _), {
       ...this.compilerOptions,
 
       rootDir: bundleSrcDir,
@@ -65,9 +67,10 @@ export class TSBundler extends Bundler {
       diagnostics.forEach(TSBundler.reportDiagnostic);
     }
 
-    for (const [ref, filename] of this.rootNames) {
+    for (let [ref, filepath] of this.rootNames) {
       ref && ref.attr("src", replaceExt(ref.attr("src"), ".js"));
-      yield [ref, filename];
+      filepath = replaceExt(filepath.replace(bundleSrcDir, bundleOutDir), ".js")
+      yield [[ref, filepath], await Bundler.readFile(filepath)];
     }
   }
 

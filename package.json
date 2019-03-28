@@ -23,6 +23,7 @@
     "cosmiconfig": "5.0.2",
     "download": "^7.1.0",
     "fs-extra": "6.0.1",
+    "minify": "^4.1.1",
     "monet": "0.8.10",
     "vorpal": "1.12.0"
   },
