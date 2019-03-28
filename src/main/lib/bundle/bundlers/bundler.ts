@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as util from "util";
-import { readFile, writeFile } from "fs"
+import { readFile, writeFile, unlink } from "fs"
 import { load } from "cheerio";
 import { MemoizeProcedure } from "../../../util/decorators/memoize-procedure";
 import { BundleConfig } from "../config";
@@ -9,6 +9,7 @@ const minify: any = require("minify");
 
 const readFileAsync = util.promisify(readFile);
 const writeFileAsync = util.promisify(writeFile);
+const unlinkAsync = util.promisify(unlink);
 
 export abstract class Bundler {
   constructor(
@@ -21,7 +22,12 @@ export abstract class Bundler {
 
   public abstract execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName>
 
-  static async finalize([[, filepath], contents]: Bundler.ProcessedRootName, config: BundleConfig): Promise<void> {
+  static async finalize([[ref, filepath], contents]: Bundler.ProcessedRootName, config: BundleConfig): Promise<void> {
+    if (config.inlineJs && filepath.endsWith(".js") && ref) {
+      ref.replaceWith(load(`<script>${contents}</script>`).html());
+      return unlinkAsync(filepath);
+    }
+
     if (config.minify) {
       contents = minify[path.extname(filepath).slice(1)](contents);
     }

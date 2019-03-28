@@ -5,6 +5,7 @@ export interface BundleConfig extends ConfigTarget {
   bundleOutDir: string;
   components: Record<string, string[]>;
   minify: boolean;
+  inlineJs: boolean;
 }
 
 export const BundleConfig: BundleConfig = {
@@ -12,4 +13,5 @@ export const BundleConfig: BundleConfig = {
   bundleOutDir: "./dist",
   components: {},
   minify: false,
+  inlineJs: false,
 };
