@@ -38,6 +38,7 @@ export default function(vorpal: Vorpal) {
     .command("bundle", "Bundle your project")
     .option("-c ,--component <name>", "Specifiy the component to bundle")
     .option("-m ,--minify", "Minify the output")
+    .option("-i ,--inlineJs", "Inline JavaScript")
     .action(async function(this: Vorpal.CommandInstance, args: Vorpal.Args) {
       const bundleConfig = GlobalConfig.bundle.getOrCreateInstance().temp();
 
@@ -53,6 +54,10 @@ export default function(vorpal: Vorpal) {
 
       if (args.options.minify) {
         bundleConfig.set("minify", true);
+      }
+
+      if (args.options.inlineJs) {
+        bundleConfig.set("inlineJs", true);
       }
 
       await bundleProject
