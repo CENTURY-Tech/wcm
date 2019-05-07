@@ -130,7 +130,7 @@ export class ReverseProxy {
             }
 
             return caches.open("wcm").then(cache => {
-              const { development, versionedUrl } = ReverseProxy.resolveUrl(new URL(event.request.url).pathname, manifest, this)
+              const { development, opaque, versionedUrl } = ReverseProxy.resolveUrlObject(new URL(event.request.url), manifest, this)
               const request = development ? event.request : new Request(versionedUrl, event.request);
 
               return development
@@ -140,7 +140,18 @@ export class ReverseProxy {
                     return cachedResponse;
                   } else {
                     return fetch(request.url).then(networkResponse => {
-                      cache.put(request, networkResponse.clone());
+                      if (opaque) {
+                        networkResponse = new Response(networkResponse.body as any, {
+                          status: networkResponse.status,
+                          statusText: networkResponse.statusText,
+                          headers: networkResponse.headers,
+                        });
+                      }
+
+                      if (networkResponse.ok) {
+                        cache.put(request, networkResponse.clone());
+                      }
+
                       return networkResponse;
                     });
                   }
@@ -227,6 +238,13 @@ export class ReverseProxy {
 
         objectStoreRequest = interaction(transaction.objectStore("wcm_keyval")) as IDBRequest;
       });
+    }
+  }
+
+  public static resolveUrlObject(url: URL, manifest: any, config: Record<"interceptSrc" | "interceptDest", string>): { development: boolean, opaque: boolean, versionedUrl: string } {
+    return {
+      ...ReverseProxy.resolveUrl(url.pathname, manifest, config),
+      opaque: !!url.searchParams.get("wcm-opaque"),
     }
   }
 
