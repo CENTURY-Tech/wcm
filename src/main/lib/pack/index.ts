@@ -30,7 +30,8 @@ export function packComponent(filepath: string) {
 
     const bundleOutDir = config[0].get("bundleOutDir");
     const interceptSrc = config[1].get("interceptSrc");
-    const found: string[] = [];
+    
+    const found: Set<string> = new Set;
 
     let completed = 0;
     let pending = 0;
@@ -48,16 +49,16 @@ export function packComponent(filepath: string) {
     yield [completed, pending, "Finished"];
   });
 
-  async function *walkTargetFile(filepath: string, interceptSrc: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
+  async function *walkTargetFile(filepath: string, interceptSrc: string, found: Set<string>): AsyncIterableIterator<Bundler.RootName> {
     for await (let [ref, includePath] of Bundler.walkSource(filepath)) {
       if (includePath.startsWith(`/${interceptSrc}`)) {
         includePath = path.resolve(path.join(".", includePath));
       }
 
-      if (!found.includes(includePath)) {
-        found.push(includePath);
-      } else {
+      if (found.has(includePath)) {
         continue;
+      } else {
+        found.add(includePath);
       }
 
       if (includePath.endsWith(".html")) {

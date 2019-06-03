@@ -111,18 +111,18 @@ export function walkProject(mode: "internal" | "external" | "*"): ConfigReader<B
     const bundleSrcDir = config.get("bundleSrcDir");
     const components = config.get("components");
 
-    const found: string[] = [];
+    const found: Set<string> = new Set;
 
     for (const [groupRoot, entry] of flattenComponents(components)) {
       const srcRoot = path.resolve(bundleSrcDir);
       const srcPath = path.resolve(srcRoot, entry);
 
-      yield *yieldRootName([null, srcPath], srcRoot);
+      yield *yieldRootNames([null, srcPath], srcRoot);
       yield *walkGroupRoot(groupRoot, srcRoot, srcPath, found);
     }
   });
 
-  function *yieldRootName([ref, includePath]: Bundler.RootName, srcRoot: string): IterableIterator<Bundler.RootName> {
+  function *yieldRootNames([ref, includePath]: Bundler.RootName, srcRoot: string): IterableIterator<Bundler.RootName> {
     switch (mode) {
       case "*":
         yield [ref, includePath]; break;
@@ -133,19 +133,19 @@ export function walkProject(mode: "internal" | "external" | "*"): ConfigReader<B
     }
   }
 
-  async function *walkGroupRoot(groupRoot: string, srcRoot: string, srcPath: string, found: string[]): AsyncIterableIterator<Bundler.RootName> {
+  async function *walkGroupRoot(groupRoot: string, srcRoot: string, srcPath: string, found: Set<string>): AsyncIterableIterator<Bundler.RootName> {
     for await (const [ref, includePath] of Bundler.walkSource(srcPath)) {
-      if (!found.includes(includePath)) {
-        found.push(includePath);
-      } else {
+      if (found.has(includePath)) {
         continue;
+      } else {
+        found.add(includePath);
       }
 
       if (includePath.startsWith(srcRoot) && includePath.endsWith(".html")) {
         yield *walkGroupRoot(groupRoot, srcRoot, path.resolve(srcRoot, includePath), found);
       }
 
-      yield *yieldRootName([ref, includePath], srcRoot);
+      yield *yieldRootNames([ref, includePath], srcRoot);
     }
   }
 }
