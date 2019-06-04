@@ -11,6 +11,11 @@ const readFileAsync = util.promisify(readFile);
 const writeFileAsync = util.promisify(writeFile);
 const unlinkAsync = util.promisify(unlink);
 
+/**
+ * A set of paths to ignore from the bundling process.
+ */
+const ignorePaths: Set<string> = new Set;
+
 export abstract class Bundler {
   constructor(
     public rootNames: Bundler.RootName[] = []
@@ -38,13 +43,43 @@ export abstract class Bundler {
   @MemoizeProcedure
   static async *walkSource(filepath: string): AsyncIterableIterator<Bundler.RootName> {
     const $ = await Bundler.readSource(filepath);
+
+    for (const elem of $("wcm\\:ignore[path]").toArray()) {
+      const lookupPath = path.resolve(path.dirname(filepath), elem.attribs.path);
+      $(elem).remove();
+
+      if (!ignorePaths.has(lookupPath)) {
+        ignorePaths.add(lookupPath);
+      }
+    }
+
+    for (const elem of $("wcm\\:import[path]").toArray()) {
+      const lookupPath = path.resolve(path.dirname(filepath), elem.attribs.path);
+      $(elem).remove();
+
+      if (!ignorePaths.has(lookupPath)) {
+        yield [null, lookupPath];
+      }
+    }
   
     for (const elem of $('link[rel="import"]').toArray()) {
-      yield [$(elem), path.resolve(path.dirname(filepath), $(elem).attr("href"))];
+      const lookupPath = path.resolve(path.dirname(filepath), $(elem).attr("href"));
+
+      if (!ignorePaths.has(lookupPath)) {
+        yield [$(elem), lookupPath];
+      } else {
+        $(elem).remove();
+      }
     }
   
     for (const elem of $('script[src]').toArray()) {
-      yield [$(elem), path.resolve(path.dirname(filepath), $(elem).attr("src"))];
+      const lookupPath = path.resolve(path.dirname(filepath), $(elem).attr("src"));
+
+      if (!ignorePaths.has(lookupPath)) {
+        yield [$(elem), lookupPath];
+      } else {
+        $(elem).remove();
+      }
     }
   }
 
@@ -54,7 +89,7 @@ export abstract class Bundler {
       throw Error(`File extension is not .html: ${filepath}`);
     }
     
-    return load(await Bundler.readFile(filepath))
+    return load(await Bundler.readFile(filepath));
   }
 
   @MemoizeProcedure
@@ -63,7 +98,7 @@ export abstract class Bundler {
       throw Error(`Filepath is not absolute: ${filepath}`);
     }
 
-    return readFileAsync(filepath, "utf8")
+    return readFileAsync(filepath, "utf8");
   }
 
   static writeFile(filepath: string, contents: string): Promise<void> {
@@ -71,7 +106,7 @@ export abstract class Bundler {
       throw Error(`Filepath is not absolute: ${filepath}`);
     }
 
-    return writeFileAsync(filepath, contents, "utf8")
+    return writeFileAsync(filepath, contents, "utf8");
   }
 
   @MemoizeProcedure
@@ -80,7 +115,7 @@ export abstract class Bundler {
   }
 
   static async extractContentsFromStatic($: CheerioStatic): Promise<string> {
-    return $("head").html() as string + $("body").html() as string;
+    return ($("head").html() as string + $("body").html() as string).trim();
   }
 }
 
