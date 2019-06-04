@@ -2,11 +2,15 @@
   "compilerOptions": {
     "rootDir": "src/main",
     "outDir": "dist",
-    "target": "es2017",
+    "target": "es2015",
     "module": "commonjs",
     "strict": true,
     "declaration": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "lib": [
+      "dom",
+      "es2017"
+    ]
   }
 }
