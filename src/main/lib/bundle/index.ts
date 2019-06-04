@@ -150,7 +150,11 @@ export function walkProject(mode: "internal" | "external" | "*"): ConfigReader<B
   }
 }
 
-function flattenComponents(components: Record<string, string[]>): Array<[string, string]> {
+function flattenComponents(components: Record<string, string[]> | string[]): Array<[string, string]> {
+  if (Array.isArray(components)) {
+    components = { "": components };
+  }
+  
   return Object.entries(components).reduce((acc, [groupRoot, entries]) => {
     return acc.concat(entries.map((entry): [string, string] => ([groupRoot, entry])));
   }, [] as Array<[string, string]>);

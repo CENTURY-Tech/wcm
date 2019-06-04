@@ -12,7 +12,7 @@ const writeFileAsync = util.promisify(writeFile);
 const unlinkAsync = util.promisify(unlink);
 
 /**
- * A
+ * A set of paths to ignore from the bundling process.
  */
 const ignorePaths: Set<string> = new Set;
 
@@ -115,7 +115,7 @@ export abstract class Bundler {
   }
 
   static async extractContentsFromStatic($: CheerioStatic): Promise<string> {
-    return $("head").html() as string + $("body").html() as string;
+    return ($("head").html() as string + $("body").html() as string).trim();
   }
 }
 
