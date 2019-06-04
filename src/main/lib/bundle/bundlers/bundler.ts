@@ -46,7 +46,6 @@ export abstract class Bundler {
 
     for (const elem of $("wcm\\:ignore[path]").toArray()) {
       const lookupPath = path.resolve(path.dirname(filepath), elem.attribs.path);
-      $(elem).remove();
 
       if (!ignorePaths.has(lookupPath)) {
         ignorePaths.add(lookupPath);
@@ -55,7 +54,6 @@ export abstract class Bundler {
 
     for (const elem of $("wcm\\:import[path]").toArray()) {
       const lookupPath = path.resolve(path.dirname(filepath), elem.attribs.path);
-      $(elem).remove();
 
       if (!ignorePaths.has(lookupPath)) {
         yield [null, lookupPath];
