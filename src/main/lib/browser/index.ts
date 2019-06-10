@@ -50,8 +50,8 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
         })
         .then(() => {
           return fetch('./manifest.json').then(response => {
-            response.json().then(manifest => {
-              fetch('/wcm/manifest', {
+            return response.json().then(manifest => {
+              return fetch('/wcm/manifest', {
                 method: 'POST',
                 body: JSON.stringify(manifest),
                 headers: {
