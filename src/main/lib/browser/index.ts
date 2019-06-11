@@ -39,49 +39,48 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
   return ConfigReader(config => {
     const workerReg = transform(
       `
-      if ('serviceWorker' in navigator && 'fetch' in window) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          return Promise.all(registrations.map(registration => {
-            return registration.unregister();
-          }));
-        })
-        .then(() => {
-          return navigator.serviceWorker.register('./wcm-impl.js');
-        })
-        .then(() => {
-          return fetch('./manifest.json').then(response => {
-            return response.json().then(manifest => {
-              return fetch('/wcm/manifest', {
-                method: 'POST',
-                body: JSON.stringify(manifest),
-                headers: {
-                  'content-type': 'application/json'
-                }
+      window.WCM = {
+        bootstrap() {
+          if (!('serviceWorker' in navigator && 'fetch' in window)) {
+            return ${config.get("enableLegacySupport") ? "Promise.resolve()" : "Promise.reject()"};
+          }
+          
+          return navigator.serviceWorker.getRegistrations()
+            .then((registrations) => {
+              return Promise.all(registrations.map(registration => {
+                return registration.unregister();
+              }));
+            })
+            .then(() => {
+              return navigator.serviceWorker.register('./wcm-impl.js');
+            })
+            .then(() => {
+              return fetch('./manifest.json').then(response => {
+                return response.json().then(manifest => {
+                  return fetch('/wcm/manifest', {
+                    method: 'POST',
+                    body: JSON.stringify(manifest),
+                    headers: {
+                      'content-type': 'application/json'
+                    }
+                  });
+                });
               });
             });
-          });
-        })
-        .then(() => {
-          window.dispatchEvent(new CustomEvent('WCMLoaded'));
-        })
-        .catch(err => {
-          console.log('Registration failed: %s', err);
-        });
-      } else {
-        console.warn("Service workers not supported!")
-      }
+        },
 
-      function loadable(obj, tagname) {
-        const elem = document.createElement(tagname);
-      
-        Object.keys(obj).map(key => {
-          elem.setAttribute(key, obj[key]);
-        });
-      
-        return new Promise(resolve => {
-          elem.onload = resolve;
-          document.body.appendChild(elem);
-        });
+        loadable(obj, tagname) {
+          const elem = document.createElement(tagname);
+        
+          Object.keys(obj).map(key => {
+            elem.setAttribute(key, obj[key]);
+          });
+        
+          return new Promise(resolve => {
+            elem.onload = resolve;
+            document.body.appendChild(elem);
+          });
+        }
       }
     `,
       config.get("babelTransformOptions")

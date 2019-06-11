@@ -7,6 +7,7 @@ export interface BrowserConfig extends ConfigTarget {
   interceptSrc: string;
   interceptDest: string;
   babelTransformOptions: TransformOptions;
+  enableLegacySupport: boolean;
 }
 
 export const BrowserConfig: BrowserConfig = {
@@ -24,5 +25,6 @@ export const BrowserConfig: BrowserConfig = {
         }
       ]
     ]
-  }
+  },
+  enableLegacySupport: false
 };
