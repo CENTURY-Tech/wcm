@@ -3,6 +3,7 @@ import * as util from "util";
 import { CompilerOptions, ModuleKind, ScriptTarget } from "typescript";
 import { readFile, writeFile } from "fs";
 
+import { Loggable, LogType } from "../../../util/methods/logging";
 import { Bundler } from "./Bundler";
 
 // We're only interested in the local instalation of Typescript, nothing else!
@@ -16,7 +17,7 @@ export class TSBundler extends Bundler {
     super(rootNames);
   }
 
-  public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName> {
+  public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName | Loggable> {
     const program = ts.createProgram(this.rootNames.map(([, _]) => _), {
       ...this.compilerOptions,
 
@@ -58,13 +59,35 @@ export class TSBundler extends Bundler {
     diagnostics = ts.getPreEmitDiagnostics(program);
 
     if (diagnostics.length) {
-      return diagnostics.forEach(TSBundler.reportDiagnostic);
+      const warnings = [];
+      const errors = [];
+
+      for (const diagnostic of diagnostics) {
+        if (diagnostic.reportsUnnecessary) {
+          warnings.push(diagnostic);
+        } else {
+          errors.push(diagnostic);
+        }
+      }
+
+      if (warnings.length) {
+        yield new Loggable(warnings.map(TSBundler.reportDiagnostic).join("\n"), LogType.WARN);
+      }
+
+      if (errors.length) {
+        yield new Loggable(errors.map(TSBundler.reportDiagnostic).join("\n"), LogType.ERROR);
+
+        // Return early, The TS won't compile!
+        return;
+      }
     }
 
     diagnostics = program.emit().diagnostics;
 
     if (diagnostics.length) {
-      diagnostics.forEach(TSBundler.reportDiagnostic);
+      for (const diagnostic of diagnostics) {
+        yield new Loggable(TSBundler.reportDiagnostic(diagnostic), LogType.WARN);
+      }
     }
 
     for (let [ref, filepath] of this.rootNames) {
@@ -74,14 +97,14 @@ export class TSBundler extends Bundler {
     }
   }
 
-  private static reportDiagnostic({ file, messageText, start }: any) {
+  private static reportDiagnostic({ file, messageText, start }: any): string {
     const message = ts.flattenDiagnosticMessageText(messageText, "\n");
 
     if (file) {
       const { line, character } = file.getLineAndCharacterOfPosition(start);
-      console.log("%s (%d,%d): %s", file.fileName, line + 1, character + 1, message);
+      return util.format("%s (%d,%d): %s", file.fileName, line + 1, character + 1, message);
     } else {
-      console.log("%s: %s", message);
+      return util.format("%s", message);
     }
   }
 }

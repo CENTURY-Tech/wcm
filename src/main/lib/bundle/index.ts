@@ -4,7 +4,7 @@ import * as Vorpal from "vorpal";
 import { readFile, writeFile } from "fs";
 import { ConfigReader } from "../../util";
 import { listConfig, getConfig, setConfig } from "../../util/methods/config";
-import { logIterator, displayProgress } from "../../util/methods/logging";
+import { logIterator, displayProgress, Loggable } from "../../util/methods/logging";
 import { GlobalConfig } from "../config";
 import { BundleConfig } from "./config";
 import { HTMLBundler } from "./bundlers/html-bundler";
@@ -93,8 +93,12 @@ export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[nu
 
     yield [completed, pending, "Processing TS"];
     for await (const processedRootName of tsBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
-      await Bundler.finalize(processedRootName, rawConfig);
-      yield [++completed, pending, "Processing TS"];
+      if (processedRootName.constructor === Loggable) {
+        yield processedRootName;
+      } else {
+        await Bundler.finalize(processedRootName as Bundler.ProcessedRootName, rawConfig);
+        yield [++completed, pending, "Processing TS"];
+      }
     }
 
     yield [completed, pending, "Processing HTML"];

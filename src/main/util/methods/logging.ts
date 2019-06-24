@@ -7,6 +7,13 @@ export enum LogType {
   FATAL
 }
 
+export class Loggable {
+  constructor(
+    public message: string,
+    public level: LogType,
+  ) {}
+};
+
 export function formatAlert(vorpal: Vorpal, type: LogType, format: string, ...values: any[]): string {
   const lines = util.format(format, ...values).split("\n");
   
@@ -53,11 +60,11 @@ export function logAsyncIterator(prompt: Vorpal.CommandInstance, format: string)
 export function displayProgress(vorpal: Vorpal, format: string): (iterator: AsyncIterableIterator<any>) => Promise<void> {
   return async iterator => {
     for await (const value of iterator) {
-      if (value.constructor === Error) {
+      if (value.constructor === Loggable) {
         vorpal.ui.redraw.clear();
         vorpal.ui.redraw.done();
 
-        vorpal.log(formatAlert(vorpal, LogType.ERROR, value.message));
+        vorpal.log(formatAlert(vorpal, value.level, value.message));
       } else {
         vorpal.ui.redraw(util.format(format, ...value));
       }
