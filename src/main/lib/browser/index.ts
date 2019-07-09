@@ -255,7 +255,14 @@ export class ReverseProxy {
       const index = pathname.indexOf(interceptSrc);
 
       if (index > -1) {
-        const [, dependencyName, ...dependencyLookup] = pathname.slice(index).split("/");
+        let [, dependencyScope, dependencyName, ...dependencyLookup] = pathname.slice(index).split("/");
+
+        if (!dependencyScope.startsWith("@")) {
+          dependencyLookup.unshift(dependencyName);
+          dependencyName = dependencyScope;
+        } else {
+          dependencyName = `${dependencyScope}/${dependencyName}`;
+        }
 
         const version = manifest[dependencyName];
 
