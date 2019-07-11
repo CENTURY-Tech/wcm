@@ -8,6 +8,7 @@ import { logIterator, displayProgress, Loggable } from "../../util/methods/loggi
 import { GlobalConfig } from "../config";
 import { BundleConfig } from "./config";
 import { HTMLBundler } from "./bundlers/html-bundler";
+import { JSBundler } from "./bundlers/js-bundler";
 import { TSBundler } from "./bundlers/ts-bundler";
 import { Bundler } from "./bundlers/Bundler";
 
@@ -69,6 +70,7 @@ export default function(vorpal: Vorpal) {
 export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string]>> =
   walkProject("internal").flatMap((iterator) => ConfigReader(async function* (config) {
     const htmlBundler = new HTMLBundler();
+    const jsBundler = new JSBundler();
     const tsBundler = new TSBundler();
 
     let completed = 0;
@@ -78,6 +80,8 @@ export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[nu
       yield [completed, ++pending, "Walking project"];
 
       switch (path.extname(filepath)) {
+        case ".js":
+          jsBundler.addRootName([ref, filepath]); break;
         case ".ts":
           tsBundler.addRootName([ref, filepath]); break;
         case ".html":
@@ -99,6 +103,12 @@ export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[nu
         await Bundler.finalize(processedRootName as Bundler.ProcessedRootName, rawConfig);
         yield [++completed, pending, "Processing TS"];
       }
+    }
+
+    yield [completed, pending, "Processing JS"];
+    for await (const processedRootName of jsBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
+      await Bundler.finalize(processedRootName, rawConfig);
+      yield [++completed, pending, "Processing JS"];
     }
 
     yield [completed, pending, "Processing HTML"];

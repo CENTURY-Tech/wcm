@@ -1,10 +1,10 @@
 import * as path from "path";
 import * as util from "util";
-import { stat, mkdir } from "fs";
+import { stat, mkdir, readFile } from "fs";
 
 import { Bundler } from "./Bundler";
 
-export class HTMLBundler extends Bundler {
+export class JSBundler extends Bundler {
   public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName> {
     for (const [ref, filepath] of this.rootNames) {
       const outPath = path.resolve(bundleOutDir, path.relative(bundleSrcDir, filepath));
@@ -17,7 +17,7 @@ export class HTMLBundler extends Bundler {
         }
       }
 
-      yield [[ref, outPath], await Bundler.extractContentsFromSource(filepath)];
+      yield [[ref, outPath], await util.promisify(readFile)(filepath, "utf8")];
     }
   }
 }
