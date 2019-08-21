@@ -4,6 +4,9 @@
   "description": "Web Components Manager, a tool to version web components",
   "bin": "dist/wcm.bin.js",
   "main": "dist/wcm.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "lint:dry": "prettier --config \".prettierrc\" --debug-check \"{docs,src}/**/*\"",
     "lint:fix": "prettier --config \".prettierrc\" --write \"{docs,src}/**/*\"",
