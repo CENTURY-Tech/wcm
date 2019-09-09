@@ -9,7 +9,7 @@ import { GlobalConfig } from "../config/index";
 import { bundleProject, walkProject } from "../bundle";
 import { BundleConfig } from "../bundle/config";
 import { BrowserConfig } from "../browser/config";
-import { Bundler } from "../bundle/bundlers/Bundler";
+import { Bundler } from "../bundle/bundlers/bundler";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -30,7 +30,7 @@ export function packComponent(filepath: string) {
 
     const bundleOutDir = config[0].get("bundleOutDir");
     const interceptSrc = config[1].get("interceptSrc");
-    
+
     const found: Set<string> = new Set;
 
     let completed = 0;

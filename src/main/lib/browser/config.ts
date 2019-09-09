@@ -1,6 +1,6 @@
 import { TransformOptions } from "babel-core";
 
-import { ConfigTarget } from "../../util/classes/Config";
+import { ConfigTarget } from "../../util/classes/config";
 
 export interface BrowserConfig extends ConfigTarget {
   manifestUrl: string;

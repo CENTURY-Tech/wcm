@@ -10,7 +10,7 @@ import { BrowserConfig } from "../browser/config";
 import { BundleConfig } from "../bundle/config";
 import { walkProject } from "../bundle";
 import { ReverseProxy } from "../browser";
-import { Bundler } from "../bundle/bundlers/Bundler";
+import { Bundler } from "../bundle/bundlers/bundler";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -29,7 +29,7 @@ export default function(vorpal: Vorpal) {
           [args.options.component]: bundleConfig.get("components")[args.options.component]
         });
       }
-      
+
       await installDependencies
         .map(displayProgress(vorpal, "(%s/%s) %s"))
         .run([bundleConfig, browserConfig]);
@@ -60,9 +60,9 @@ export const installDependencies: CombinedConfigReader<[BundleConfig, BrowserCon
 
 async function *processInstallFor(mode: "default" | "proxy", filepath: string, manifest: any, interceptSrc: string, interceptDest: string, progress: Progress, processed: string[]): AsyncIterableIterator<[number, number, string] | Error> {
   const { versionedUrl } = ReverseProxy.resolveUrl(filepath, manifest, { interceptSrc, interceptDest });
-  
+
   let destFilepath: string;
-  
+
   switch (mode) {
     case "default":
       destFilepath = path.resolve(path.join(".", filepath)); break;
@@ -92,7 +92,7 @@ async function *processInstallFor(mode: "default" | "proxy", filepath: string, m
 
     if (!processingErr) {
       yield [progress.completed, progress.pending, `Downloaded: ${versionedUrl} -> ${destFilepath}`];
-      
+
       if (destFilepath.endsWith(".html")) {
         yield [progress.completed, progress.pending, `Walking source for: ${versionedUrl} -> ${destFilepath}`];
 
@@ -108,7 +108,7 @@ async function *processInstallFor(mode: "default" | "proxy", filepath: string, m
         }
       }
     }
-  
+
     if (!processingErr) {
       yield [++progress.completed, progress.pending, `Import processed: ${filepath}`];
     } else {

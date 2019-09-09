@@ -2,7 +2,7 @@ import * as path from "path";
 import * as util from "util";
 import { stat, mkdir, readFile } from "fs";
 
-import { Bundler } from "./Bundler";
+import { Bundler } from "./bundler";
 
 export class JSBundler extends Bundler {
   public async *execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName> {
