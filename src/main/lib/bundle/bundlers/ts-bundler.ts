@@ -4,7 +4,7 @@ import { CompilerOptions, ModuleKind, ScriptTarget } from "typescript";
 import { readFile, writeFile } from "fs";
 
 import { Loggable, LogType } from "../../../util/methods/logging";
-import { Bundler } from "./Bundler";
+import { Bundler } from "./bundler";
 
 // We're only interested in the local instalation of Typescript, nothing else!
 const ts = require(require.resolve("typescript", { paths: [process.cwd()] }));

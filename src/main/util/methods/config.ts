@@ -1,5 +1,5 @@
 import { ConfigReader } from "..";
-import { ConfigTarget } from "../classes/Config";
+import { ConfigTarget } from "../classes/config";
 
 /**
  * List the currently stored configuration.

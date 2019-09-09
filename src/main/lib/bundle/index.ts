@@ -10,7 +10,7 @@ import { BundleConfig } from "./config";
 import { HTMLBundler } from "./bundlers/html-bundler";
 import { JSBundler } from "./bundlers/js-bundler";
 import { TSBundler } from "./bundlers/ts-bundler";
-import { Bundler } from "./bundlers/Bundler";
+import { Bundler } from "./bundlers/bundler";
 
 export default function(vorpal: Vorpal) {
   vorpal
@@ -168,7 +168,7 @@ function flattenComponents(components: Record<string, string[]> | string[]): Arr
   if (Array.isArray(components)) {
     components = { "": components };
   }
-  
+
   return Object.entries(components).reduce((acc, [groupRoot, entries]) => {
     return acc.concat(entries.map((entry): [string, string] => ([groupRoot, entry])));
   }, [] as Array<[string, string]>);
