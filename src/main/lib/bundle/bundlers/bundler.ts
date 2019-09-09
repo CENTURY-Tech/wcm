@@ -59,7 +59,7 @@ export abstract class Bundler {
         yield [null, lookupPath];
       }
     }
-  
+
     for (const elem of $('link[rel="import"]').toArray()) {
       const lookupPath = path.resolve(path.dirname(filepath), $(elem).attr("href"));
 
@@ -69,7 +69,7 @@ export abstract class Bundler {
         $(elem).remove();
       }
     }
-  
+
     for (const elem of $('script[src]').toArray()) {
       const lookupPath = path.resolve(path.dirname(filepath), $(elem).attr("src"));
 
@@ -86,7 +86,7 @@ export abstract class Bundler {
     if (!filepath.endsWith(".html")) {
       throw Error(`File extension is not .html: ${filepath}`);
     }
-    
+
     return load(await Bundler.readFile(filepath));
   }
 
