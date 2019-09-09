@@ -42,7 +42,7 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
       window.WCM = {
         bootstrap() {
           if (!('serviceWorker' in navigator && 'fetch' in window)) {
-            return ${config.get("enableLegacySupport") ? "Promise.resolve()" : "Promise.reject()"};
+            return ${config.get("enableLegacySupport") ? "Promise.reject()" : "throw Error('Browser not supported')"};
           }
 
           return navigator.serviceWorker.register('./wcm-impl.js')
