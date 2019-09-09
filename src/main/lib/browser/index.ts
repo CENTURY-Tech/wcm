@@ -44,16 +44,8 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
           if (!('serviceWorker' in navigator && 'fetch' in window)) {
             return ${config.get("enableLegacySupport") ? "Promise.resolve()" : "Promise.reject()"};
           }
-          
-          return navigator.serviceWorker.getRegistrations()
-            .then((registrations) => {
-              return Promise.all(registrations.map(registration => {
-                return registration.unregister();
-              }));
-            })
-            .then(() => {
-              return navigator.serviceWorker.register('./wcm-impl.js');
-            })
+
+          return navigator.serviceWorker.register('./wcm-impl.js')
             .then(() => {
               return fetch('./manifest.json').then(response => {
                 return response.json().then(manifest => {
@@ -71,11 +63,11 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
 
         loadable(obj, tagname) {
           const elem = document.createElement(tagname);
-        
+
           Object.keys(obj).map(key => {
             elem.setAttribute(key, obj[key]);
           });
-        
+
           return new Promise(resolve => {
             elem.onload = resolve;
             document.body.appendChild(elem);
