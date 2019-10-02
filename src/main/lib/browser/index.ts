@@ -48,17 +48,21 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
           return navigator.serviceWorker.register('./wcm-impl.js')
             .then(() => {
               return fetch('./manifest.json').then(response => {
-                return response.json().then(manifest => {
-                  return fetch('/wcm/manifest', {
-                    method: 'POST',
-                    body: JSON.stringify(manifest),
-                    headers: {
-                      'content-type': 'application/json'
-                    }
-                  });
-                });
+                return response.json().then(this.setManifest);
               });
             });
+        },
+
+        getManifest() {
+          return postMessage("getManifest");
+        },
+
+        setManifest(manifest) {
+          return postMessage("setManifest", manifest);
+        },
+
+        flushCache() {
+          return postMessage("flushCache");
         },
 
         loadable(obj, tagname) {
@@ -74,6 +78,22 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
           });
         }
       }
+
+      function postMessage(command, data) {
+        return new Promise((resolve, reject) => {
+          const messageChannel = new MessageChannel();
+
+          messageChannel.port1.onmessage = ({ data }) => {
+            if (data.error) {
+              reject(data.error);
+            } else {
+              resolve(data);
+            }
+          };
+
+          navigator.serviceWorker.controller.postMessage({ command, data }, [messageChannel.port2]);
+        });
+      }
     `,
       config.get("babelTransformOptions")
     );
@@ -88,72 +108,6 @@ interface ProxyEndpoints {
 }
 
 export class ReverseProxy {
-  public endpoints: ProxyEndpoints[] = [
-    {
-      matcher: (event: any) => {
-        return new URL(event.request.url).pathname === "/wcm/manifest" && event.request.method === "POST";
-      },
-      handler: (event: any) => {
-        event.respondWith(
-          event.request.json().then((manifest: any) => {
-            return this.setManifest(manifest).then(() => new Response());
-          })
-        );
-      }
-    },
-    {
-      matcher: (event: any) => {
-        return new URL(event.request.url).pathname === "/wcm/flush" && event.request.method === "POST";
-      },
-      handler: (event: any) => {
-        event.respondWith(caches.delete("wcm").then(() => new Response()));
-      }
-    },
-    {
-      matcher: (event: any) => {
-        return event.request.url.match(new RegExp(this.interceptSrc, "g"));
-      },
-      handler: function(event: any) {
-        event.respondWith(
-          this.getManifest().then((manifest: any) => {
-            if (!manifest) {
-              return fetch(event.request);
-            }
-
-            return caches.open("wcm").then(cache => {
-              const { development, opaque, versionedUrl } = ReverseProxy.resolveUrlObject(new URL(event.request.url), manifest, this)
-              const request = development ? event.request : new Request(versionedUrl, event.request);
-
-              return development
-                ? fetch(request.url)
-                : cache.match(request).then(cachedResponse => {
-                  if (cachedResponse) {
-                    return cachedResponse;
-                  } else {
-                    return fetch(request.url).then(networkResponse => {
-                      if (opaque) {
-                        networkResponse = new Response(networkResponse.body as any, {
-                          status: networkResponse.status,
-                          statusText: networkResponse.statusText,
-                          headers: networkResponse.headers,
-                        });
-                      }
-
-                      if (networkResponse.ok) {
-                        cache.put(request, networkResponse.clone());
-                      }
-
-                      return networkResponse;
-                    });
-                  }
-                });
-            });
-          })
-        );
-      }
-    }
-  ];
-
   constructor(
     public interceptSrc: string,
     public interceptDest: string,
@@ -164,12 +118,14 @@ export class ReverseProxy {
     self.addEventListener("install", this.handleInstallEvent);
     self.addEventListener("activate", this.handleActivateEvent);
     self.addEventListener("fetch", this.handleFetchEvent);
+    self.addEventListener("message", this.handleMessageEvent);
   }
 
   public teardown() {
     self.removeEventListener("install", this.handleInstallEvent);
     self.removeEventListener("activate", this.handleActivateEvent);
     self.removeEventListener("fetch", this.handleFetchEvent);
+    self.removeEventListener("message", this.handleMessageEvent);
   }
 
   public getManifest(): Promise<object> {
@@ -184,6 +140,10 @@ export class ReverseProxy {
     });
   }
 
+  public flushCache(): Promise<boolean> {
+    return caches.delete("wcm");
+  }
+
   private handleInstallEvent(event: any): void {
     (self as any).skipWaiting();
   }
@@ -193,10 +153,59 @@ export class ReverseProxy {
   }
 
   private handleFetchEvent = function(this: ReverseProxy, event: any): void {
-    for (var i = 0, n = this.endpoints.length; i < n; i++) {
-      if (this.endpoints[i].matcher.call(this, event)) {
-        return this.endpoints[i].handler.call(this, event);
+    if (!event.request.url.match(new RegExp(this.interceptSrc, "g"))) {
+      return;
+    }
+
+    event.respondWith(this.getManifest().then((manifest: any) => {
+      if (!manifest) {
+        return fetch(event.request);
       }
+
+      return caches.open("wcm").then(cache => {
+        const { development, opaque, versionedUrl } = ReverseProxy.resolveUrlObject(new URL(event.request.url), manifest, this)
+        const request = development ? event.request : new Request(versionedUrl, event.request);
+
+        return development
+          ? fetch(request.url)
+          : cache.match(request).then(cachedResponse => {
+            if (cachedResponse) {
+              return cachedResponse;
+            } else {
+              return fetch(request.url).then(networkResponse => {
+                if (opaque) {
+                  networkResponse = new Response(networkResponse.body as any, {
+                    status: networkResponse.status,
+                    statusText: networkResponse.statusText,
+                    headers: networkResponse.headers,
+                  });
+                }
+
+                if (networkResponse.ok) {
+                  cache.put(request, networkResponse.clone());
+                }
+
+                return networkResponse;
+              });
+            }
+          });
+      });
+    }));
+  }.bind(this);
+
+  private handleMessageEvent = function(this: ReverseProxy, event: any): any {
+    switch (event.data.command) {
+      case "getManifest":
+        return this.getManifest().then((res) => event.ports[0].postMessage(res));
+        
+      case "setManifest":
+        return this.setManifest(event.data.data).then((res) => event.ports[0].postMessage(res));
+
+      case "flushCache":
+        return this.flushCache().then((res) => event.ports[0].postMessage(res));
+      
+      default:
+        event.ports[0].postMessage(Error(`Unknown command: "${event.data.command}"`));
     }
   }.bind(this);
 
