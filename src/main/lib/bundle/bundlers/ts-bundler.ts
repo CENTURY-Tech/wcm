@@ -1,7 +1,6 @@
 import * as path from "path";
 import * as util from "util";
 import { CompilerOptions, ModuleKind, ScriptTarget } from "typescript";
-import { readFile, writeFile } from "fs";
 
 import { Loggable, LogType } from "../../../util/methods/logging";
 import { Bundler } from "./bundler";
@@ -11,7 +10,7 @@ const ts = require(require.resolve("typescript", { paths: [process.cwd()] }));
 
 export class TSBundler extends Bundler {
   constructor(
-    public compilerOptions: CompilerOptions = require(require.resolve("tsconfig.json", { paths: [process.cwd()] })).compilerOptions,
+    public compilerOptions: CompilerOptions = TSBundler.getCompilerOptions(),
     public rootNames: Bundler.RootName[] = []
   ) {
     super(rootNames);
@@ -23,35 +22,6 @@ export class TSBundler extends Bundler {
 
       rootDir: bundleSrcDir,
       outDir: bundleOutDir,
-
-      module:
-        !this.compilerOptions.module ||
-        ({
-          none: 0,
-          commonjs: 1,
-          amd: 2,
-          umd: 3,
-          system: 4,
-          es2015: 5,
-          esnext: 6
-        } as Record<string, ModuleKind>)[(this.compilerOptions.module as any).toLowerCase()],
-
-      target:
-        !this.compilerOptions.target ||
-        ({
-          es3: 0,
-          es5: 1,
-          es2015: 2,
-          es2016: 3,
-          es2017: 4,
-          es2018: 5,
-          esnext: 6
-        } as Record<string, ScriptTarget>)[(this.compilerOptions.target as any).toLowerCase()],
-
-      /**
-       *
-       */
-      lib: !this.compilerOptions.lib || this.compilerOptions.lib.map(lib => `lib.${lib}.d.ts`)
     });
 
     let diagnostics;
@@ -95,6 +65,15 @@ export class TSBundler extends Bundler {
       filepath = replaceExt(filepath.replace(bundleSrcDir, bundleOutDir), ".js")
       yield [[ref, filepath], await Bundler.readFile(filepath)];
     }
+  }
+
+  private static getCompilerOptions(): CompilerOptions {
+      let parsedConfig: any;
+
+      parsedConfig = ts.readConfigFile("tsconfig.json", ts.sys.readFile);
+      parsedConfig = ts.parseJsonConfigFileContent(parsedConfig.config, ts.sys, process.cwd());
+
+      return parsedConfig.options;
   }
 
   private static reportDiagnostic({ file, messageText, start }: any): string {
