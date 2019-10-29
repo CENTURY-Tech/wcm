@@ -48,7 +48,7 @@ export class TSBundler extends Bundler {
         yield new Loggable(errors.map(TSBundler.reportDiagnostic).join("\n"), LogType.ERROR);
 
         // Return early, The TS won't compile!
-        return;
+        return process.exit(1);
       }
     }
 
@@ -81,7 +81,7 @@ export class TSBundler extends Bundler {
 
     if (file) {
       const { line, character } = file.getLineAndCharacterOfPosition(start);
-      return util.format("%s (%d,%d): %s", file.fileName, line + 1, character + 1, message);
+      return util.format("\x1b[4m%s (%d,%d):\x1b[24m\n%s", path.relative(process.cwd(), file.fileName), line + 1, character + 1, message);
     } else {
       return util.format("%s", message);
     }
