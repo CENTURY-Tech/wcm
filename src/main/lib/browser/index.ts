@@ -41,8 +41,12 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
       `
       window.WCM = {
         bootstrap() {
-          if (!('serviceWorker' in navigator && 'fetch' in window)) {
-            return ${config.get("enableLegacySupport") ? "Promise.reject()" : "throw Error('Browser not supported')"};
+          if (!('serviceWorker' in navigator)) {
+            return ${config.get("enableLegacySupport") ? "Promise.reject(" : "throw Error("}'Service Workers not supported');
+          }
+
+          if (!('fetch' in window)) {
+            return ${config.get("enableLegacySupport") ? "Promise.reject(" : "throw Error("}'Fetch not supported');
           }
 
           return navigator.serviceWorker.register('./wcm-impl.js')
@@ -54,15 +58,15 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
         },
 
         getManifest() {
-          return postMessage("getManifest");
+          return wcmPostMessage("getManifest");
         },
 
         setManifest(manifest) {
-          return postMessage("setManifest", manifest);
+          return wcmPostMessage("setManifest", manifest);
         },
 
         flushCache() {
-          return postMessage("flushCache");
+          return wcmPostMessage("flushCache");
         },
 
         loadable(obj, tagname) {
@@ -79,7 +83,7 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
         }
       }
 
-      function postMessage(command, data) {
+      function wcmPostMessage(command, data) {
         return new Promise((resolve, reject) => {
           const messageChannel = new MessageChannel();
 
@@ -145,7 +149,7 @@ export class ReverseProxy {
   }
 
   private handleInstallEvent(event: any): void {
-    (self as any).skipWaiting();
+    event.waitUntil((self as any).skipWaiting());
   }
 
   private handleActivateEvent(event: any): void {
@@ -197,13 +201,13 @@ export class ReverseProxy {
     switch (event.data.command) {
       case "getManifest":
         return this.getManifest().then((res) => event.ports[0].postMessage(res));
-        
+
       case "setManifest":
         return this.setManifest(event.data.data).then((res) => event.ports[0].postMessage(res));
 
       case "flushCache":
         return this.flushCache().then((res) => event.ports[0].postMessage(res));
-      
+
       default:
         event.ports[0].postMessage(Error(`Unknown command: "${event.data.command}"`));
     }
