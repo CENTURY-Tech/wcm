@@ -2,10 +2,9 @@ import * as path from "path";
 import * as util from "util";
 import { readFile, writeFile, unlink } from "fs"
 import { load } from "cheerio";
+import { minify } from "html-minifier";
 import { MemoizeProcedure } from "../../../util/decorators/memoize-procedure";
 import { BundleConfig } from "../config";
-
-const minify: any = require("minify");
 
 const readFileAsync = util.promisify(readFile);
 const writeFileAsync = util.promisify(writeFile);
@@ -33,8 +32,8 @@ export abstract class Bundler {
       return unlinkAsync(filepath);
     }
 
-    if (config.minify) {
-      contents = minify[path.extname(filepath).slice(1)](contents);
+    if (config.minify && filepath.endsWith(".html")) {
+      contents = minify(contents, config.minify === true ? undefined : config.minify);
     }
 
     return Bundler.writeFile(filepath, contents);
