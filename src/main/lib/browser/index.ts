@@ -42,15 +42,21 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
       window.WCM = {
         bootstrap() {
           if (!('serviceWorker' in navigator)) {
-            return ${config.get("enableLegacySupport") ? "Promise.reject(" : "throw Error("}'Service Workers not supported');
+            ${config.get("enableLegacySupport") ? "return Promise.reject(" : "throw Error("}'Service Workers not supported');
           }
 
           if (!('fetch' in window)) {
-            return ${config.get("enableLegacySupport") ? "Promise.reject(" : "throw Error("}'Fetch not supported');
+            ${config.get("enableLegacySupport") ? "return Promise.reject(" : "throw Error("}'Fetch not supported');
           }
 
           return navigator.serviceWorker.register('./wcm-impl.js')
             .then(() => {
+              ${config.get("enableOverrideSupport") ? `
+              if (localStorage.getItem('wcm.overrideEnabled')) {
+                console.warn('WCM override enabled!');
+                return Promise.resolve();
+              }
+              ` : ""}
               return fetch('./manifest.json').then(response => {
                 return response.json().then(this.setManifest);
               });
@@ -80,7 +86,16 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
             elem.onload = resolve;
             document.body.appendChild(elem);
           });
-        }
+        },
+        ${config.get("enableOverrideSupport") ? `
+        useOverride(manifest) {
+          localStorage.setItem("wcm.overrideEnabled", true);
+          return wcmPostMessage("setManifest", manifest);
+        },
+
+        disableOverride() {
+          localStorage.removeItem('wcm.overrideEnabled');
+        },` : ""}
       }
 
       function wcmPostMessage(command, data) {
@@ -104,11 +119,6 @@ export function createWorkerRegCode(): ConfigReader<BrowserConfig, string> {
 
     return workerReg.code || "";
   });
-}
-
-interface ProxyEndpoints {
-  matcher(this: ReverseProxy, event: any): boolean;
-  handler(this: ReverseProxy, event: any): void;
 }
 
 export class ReverseProxy {

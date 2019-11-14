@@ -1,4 +1,4 @@
-import cosmiconfig from "cosmiconfig";
+import { cosmiconfigSync } from "cosmiconfig";
 import * as Vorpal from "vorpal";
 import { ConfigFactory } from "../../util/factories/config-factory";
 import { formatAlert, LogType } from "../../util/methods/logging";
@@ -14,12 +14,12 @@ export const GlobalConfig = {
   migration: ConfigFactory(MigrationConfig)
 };
 
-export default async function(vorpal: Vorpal) {
-  const explorer = cosmiconfig("wcm", {
+export default function(vorpal: Vorpal) {
+  const explorer = cosmiconfigSync("wcm", {
     searchPlaces: ["package.json", ".wcmrc"]
   });
 
-  const result = explorer.searchSync();
+  const result = explorer.search();
 
   if (result) {
     for (const namespace in result.config) {
