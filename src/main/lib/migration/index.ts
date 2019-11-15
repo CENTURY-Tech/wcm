@@ -85,8 +85,8 @@ const iterateDependencies: ConfigReader<MigrationConfig, AsyncIterableIterator<D
     }
   });
 
-const iterateMigration: ConfigReader<MigrationConfig, AsyncIterableIterator<[Dependency, () => Promise<void>]>> =
-  iterateDependencies.flatMap((dependencies) => ConfigReader(async function*(config) {
+const iterateMigration: ConfigReader<MigrationConfig, AsyncIterableIterator<[Dependency, (() => Promise<void>)]>> =
+  iterateDependencies.flatMap((dependencies) => ConfigReader(async function*(config): AsyncGenerator<[Dependency, (() => Promise<void>)]> {
     const outDir = config.get("depsOutDir");
 
     for await (const dependency of dependencies) {
@@ -106,15 +106,15 @@ const iterateMigration: ConfigReader<MigrationConfig, AsyncIterableIterator<[Dep
 /**
  * List the project dependencies.
  */
-const listDependencies: ConfigReader<MigrationConfig, AsyncIterableIterator<[string, string, string]>> =
-  iterateDependencies.map(async function*(dependencies) {
+const listDependencies: ConfigReader<MigrationConfig, AsyncIterableIterator<[string, string]>> =
+  iterateDependencies.map(async function*(dependencies): AsyncGenerator<[string, string]> {
     for await (const dependency of dependencies) {
       yield [await dependency.getName(), await dependency.getVersion()];
     }
   });
 
-const runMigration: ConfigReader<MigrationConfig, AsyncIterableIterator<[string, string, string]>> =
-  iterateMigration.map(async function*(migration) {
+const runMigration: ConfigReader<MigrationConfig, AsyncIterableIterator<[number, number, string]>> =
+  iterateMigration.map(async function*(migration): AsyncGenerator<[number, number, string]> {
     let completed = 0;
     const steps = [];
 

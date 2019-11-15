@@ -67,8 +67,8 @@ export default function(vorpal: Vorpal) {
     });
 }
 
-export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string]>> =
-  walkProject("internal").flatMap((iterator) => ConfigReader(async function* (config) {
+export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[number, number, string] | Loggable>> =
+  walkProject("internal").flatMap((iterator) => ConfigReader(async function* (config): AsyncGenerator<[number, number, string] | Loggable> {
     const htmlBundler = new HTMLBundler();
     const jsBundler = new JSBundler();
     const tsBundler = new TSBundler();
@@ -98,7 +98,7 @@ export const bundleProject: ConfigReader<BundleConfig, AsyncIterableIterator<[nu
     yield [completed, pending, "Processing TS"];
     for await (const processedRootName of tsBundler.execCompilation({ bundleSrcDir, bundleOutDir })) {
       if (processedRootName.constructor === Loggable) {
-        yield processedRootName;
+        yield processedRootName as Loggable;
       } else {
         await Bundler.finalize(processedRootName as Bundler.ProcessedRootName, rawConfig);
         yield [++completed, pending, "Processing TS"];

@@ -4,6 +4,7 @@ import { readFile, writeFile, unlink } from "fs"
 import { load } from "cheerio";
 import { minify } from "html-minifier";
 import { MemoizeProcedure } from "../../../util/decorators/memoize-procedure";
+import { Loggable } from "../../../util/methods/logging";
 import { BundleConfig } from "../config";
 
 const readFileAsync = util.promisify(readFile);
@@ -24,7 +25,7 @@ export abstract class Bundler {
     this.rootNames.push(rootName);
   }
 
-  public abstract execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName>
+  public abstract execCompilation({ bundleSrcDir, bundleOutDir }: Record<string, string>): AsyncIterableIterator<Bundler.ProcessedRootName | Loggable>
 
   static async finalize([[ref, filepath], contents]: Bundler.ProcessedRootName, config: BundleConfig): Promise<void> {
     if (config.inlineJs && filepath.endsWith(".js") && ref) {
