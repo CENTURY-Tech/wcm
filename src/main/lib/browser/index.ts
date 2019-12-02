@@ -178,7 +178,7 @@ export class ReverseProxy {
 
       return caches.open("wcm").then(cache => {
         const { development, opaque, versionedUrl } = ReverseProxy.resolveUrlObject(new URL(event.request.url), manifest, this)
-        const request = development ? event.request : new Request(versionedUrl, event.request);
+        const request = development ? event.request : new Request(versionedUrl, { ...event.request, mode: "cors" });
 
         return development
           ? fetch(request.url)
